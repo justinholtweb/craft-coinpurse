@@ -1,0 +1,42 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Log entry'|t('coinpurse') %}
+{% set selectedSubnavItem = 'log' %}
+
+{% set crumbs = [
+    { label: 'Express checkout log'|t('coinpurse'), url: url('coinpurse/log') }
+] %}
+
+{% block content %}
+    <div class="pane">
+        <table class="data fullwidth">
+            <tbody>
+                <tr><th scope="row">{{ 'Event'|t('coinpurse') }}</th><td>{{ entry.action }}</td></tr>
+                <tr><th scope="row">{{ 'Level'|t('coinpurse') }}</th><td>{{ entry.level }}</td></tr>
+                <tr><th scope="row">{{ 'When'|t('coinpurse') }}</th><td>{{ entry.dateCreated ? entry.dateCreated|datetime('long') : '—' }}</td></tr>
+                <tr><th scope="row">{{ 'Driver'|t('coinpurse') }}</th><td>{{ entry.driver ?: '—' }}</td></tr>
+                <tr><th scope="row">{{ 'Wallet'|t('coinpurse') }}</th><td>{{ entry.wallet ?: '—' }}</td></tr>
+                <tr><th scope="row">{{ 'Session'|t('coinpurse') }}</th><td class="code">{{ entry.sessionUid ?: '—' }}</td></tr>
+                <tr><th scope="row">{{ 'Order'|t('coinpurse') }}</th><td>{{ entry.orderNumber ?: '—' }}</td></tr>
+                <tr><th scope="row">{{ 'Took'|t('coinpurse') }}</th><td>{{ entry.durationMs ? entry.durationMs ~ 'ms' : '—' }}</td></tr>
+                <tr><th scope="row">{{ 'IP'|t('coinpurse') }}</th><td>{{ entry.ip ?: '—' }}</td></tr>
+                <tr><th scope="row">{{ 'User agent'|t('coinpurse') }}</th><td class="light">{{ entry.userAgent ?: '—' }}</td></tr>
+            </tbody>
+        </table>
+    </div>
+
+    {% if entry.message %}
+        <h2>{{ 'Message'|t('coinpurse') }}</h2>
+        <div class="pane"><pre class="code">{{ entry.message }}</pre></div>
+    {% endif %}
+
+    {% if entry.request %}
+        <h2>{{ 'Request'|t('coinpurse') }}</h2>
+        <div class="pane"><pre class="code">{{ entry.request }}</pre></div>
+    {% endif %}
+
+    {% if entry.response %}
+        <h2>{{ 'Response'|t('coinpurse') }}</h2>
+        <div class="pane"><pre class="code">{{ entry.response }}</pre></div>
+    {% endif %}
+{% endblock %}

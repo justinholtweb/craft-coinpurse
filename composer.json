@@ -1,0 +1,61 @@
+{
+    "name": "justinholtweb/craft-coinpurse",
+    "description": "Apple Pay and Google Pay express checkout for Craft Commerce \u2014 a one-tap wallet button on any product, cart or checkout page.",
+    "version": "5.0.0",
+    "type": "craft-plugin",
+    "keywords": [
+        "craftcms",
+        "craft-plugin",
+        "craft-commerce",
+        "commerce",
+        "apple-pay",
+        "google-pay",
+        "wallet",
+        "express-checkout",
+        "payments",
+        "stripe"
+    ],
+    "license": "proprietary",
+    "authors": [
+        {
+            "name": "Justin Holt",
+            "homepage": "https://justinholt.com"
+        }
+    ],
+    "support": {
+        "email": "justin@justinholt.com"
+    },
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "require": {
+        "php": "^8.2",
+        "ext-json": "*",
+        "ext-bcmath": "*",
+        "ext-openssl": "*",
+        "craftcms/cms": "^5.3.0",
+        "craftcms/commerce": "^5.0.0"
+    },
+    "suggest": {
+        "craftcms/commerce-stripe": "Lets Coin Purse drive Apple Pay and Google Pay through Stripe's Express Checkout Element."
+    },
+    "autoload": {
+        "psr-4": {
+            "justinholtweb\\coinpurse\\": "src/"
+        }
+    },
+    "config": {
+        "allow-plugins": {
+            "craftcms/plugin-installer": true,
+            "yiisoft/yii2-composer": true
+        }
+    },
+    "extra": {
+        "name": "Coin Purse",
+        "handle": "coinpurse",
+        "developer": "Justin Holt",
+        "developerUrl": "https://justinholt.com",
+        "documentationUrl": "https://github.com/justinholtweb/craft-coinpurse/blob/main/README.md",
+        "changelogUrl": "https://raw.githubusercontent.com/justinholtweb/craft-coinpurse/main/CHANGELOG.md",
+        "class": "justinholtweb\\coinpurse\\Plugin"
+    }
+}

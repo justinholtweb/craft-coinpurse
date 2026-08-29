@@ -1,0 +1,394 @@
+{# Coin Purse serves its own settings screen from a plugin CP route rather than Craft's generic
+   plugin-settings page, so Craft is *not* namespacing this template's output. Field names are
+   therefore written `settings[foo]`. On the generic page the opposite is true — names written with
+   a `settings[…]` prefix there post as `settings[settings][foo]` and save nothing at all, while
+   the screen still cheerfully reports success. #}
+{% extends '_layouts/cp' %}
+{% import '_includes/forms' as forms %}
+
+{% set title = 'Coin Purse'|t('coinpurse') %}
+{% set selectedSubnavItem = 'settings' %}
+
+{% set crumbs = [
+    { label: 'Coin Purse'|t('coinpurse'), url: url('coinpurse') }
+] %}
+
+{% block content %}
+    {% if not commerceReady %}
+        <div class="pane">
+            <p class="error">{{ 'Craft Commerce isn’t installed or enabled. Coin Purse can’t do anything without it.'|t('coinpurse') }}</p>
+        </div>
+    {% endif %}
+
+    {% if readOnly %}
+        <div class="pane">
+            <p>{{ 'Admin changes are disabled in this environment, so these settings are read-only.'|t('coinpurse') }}</p>
+        </div>
+    {% endif %}
+
+    <form method="post" accept-charset="UTF-8">
+        {{ csrfInput() }}
+        {{ actionInput('coinpurse/settings/save') }}
+        {{ redirectInput('coinpurse/settings') }}
+
+        <h2>{{ 'Gateway'|t('coinpurse') }}</h2>
+
+        <div class="pane">
+            {{ forms.selectField({
+                label: 'Gateway'|t('coinpurse'),
+                instructions: 'The Commerce gateway express payments are charged through.'|t('coinpurse'),
+                name: 'settings[gatewayId]',
+                value: settings.gatewayId,
+                options: gatewayOptions,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.selectField({
+                label: 'Driver'|t('coinpurse'),
+                instructions: '“Automatic” prefers Stripe’s own Express Checkout Element when the gateway is Stripe, and falls back to speaking Apple Pay and Google Pay directly for everything else.'|t('coinpurse'),
+                name: 'settings[driver]',
+                value: settings.driver,
+                options: driverOptions,
+                disabled: readOnly,
+            }) }}
+        </div>
+
+        <h2>{{ 'Wallets'|t('coinpurse') }}</h2>
+
+        <div class="pane">
+            {{ forms.lightswitchField({
+                label: 'Apple Pay'|t('coinpurse'),
+                name: 'settings[enableApplePay]',
+                on: settings.enableApplePay,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Google Pay'|t('coinpurse'),
+                name: 'settings[enableGooglePay]',
+                on: settings.enableGooglePay,
+                disabled: readOnly,
+            }) }}
+
+            <hr>
+
+            <p class="light">{{ 'Stripe’s Express Checkout Element can show these from the same button. They’re off by default, because a PayPal button appearing on a product page nobody configured is a support ticket, not a feature.'|t('coinpurse') }}</p>
+
+            {{ forms.lightswitchField({
+                label: 'Link'|t('coinpurse'),
+                name: 'settings[enableLink]',
+                on: settings.enableLink,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'PayPal'|t('coinpurse'),
+                name: 'settings[enablePaypal]',
+                on: settings.enablePaypal,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Amazon Pay'|t('coinpurse'),
+                name: 'settings[enableAmazonPay]',
+                on: settings.enableAmazonPay,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Klarna'|t('coinpurse'),
+                name: 'settings[enableKlarna]',
+                on: settings.enableKlarna,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Let Stripe choose'|t('coinpurse'),
+                instructions: 'Show whatever wallets Stripe thinks the browser supports, ignoring the switches above.'|t('coinpurse'),
+                name: 'settings[stripeAutoWallets]',
+                on: settings.stripeAutoWallets,
+                disabled: readOnly,
+            }) }}
+        </div>
+
+        <h2>{{ 'The payment sheet'|t('coinpurse') }}</h2>
+
+        <div class="pane">
+            {{ forms.autosuggestField({
+                label: 'Merchant name'|t('coinpurse'),
+                instructions: 'Shown in the wallet sheet. Defaults to the system name.'|t('coinpurse'),
+                name: 'settings[merchantName]',
+                value: settings.merchantName,
+                suggestEnvVars: true,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Merchant country'|t('coinpurse'),
+                instructions: 'Two-letter country code for the merchant, not the customer.'|t('coinpurse'),
+                name: 'settings[merchantCountryCode]',
+                value: settings.merchantCountryCode,
+                size: 4,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Ship to countries'|t('coinpurse'),
+                instructions: 'Comma-separated country codes the wallet may offer. Leave empty for anywhere Commerce will ship.'|t('coinpurse'),
+                name: 'settings[allowedShippingCountries]',
+                value: settings.allowedShippingCountries|join(', '),
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Ask for an email address'|t('coinpurse'),
+                instructions: 'Commerce can’t complete an order without one.'|t('coinpurse'),
+                name: 'settings[requireEmail]',
+                on: settings.requireEmail,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Ask for a name'|t('coinpurse'),
+                name: 'settings[requireName]',
+                on: settings.requireName,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Ask for a phone number'|t('coinpurse'),
+                name: 'settings[requirePhone]',
+                on: settings.requirePhone,
+                disabled: readOnly,
+            }) }}
+        </div>
+
+        <h2>{{ 'Button'|t('coinpurse') }}</h2>
+
+        <div class="pane">
+            {{ forms.selectField({
+                label: 'Type'|t('coinpurse'),
+                name: 'settings[buttonType]',
+                value: settings.buttonType,
+                options: [
+                    { label: 'Default'|t('coinpurse'), value: 'default' },
+                    { label: 'Buy'|t('coinpurse'), value: 'buy' },
+                    { label: 'Check out'|t('coinpurse'), value: 'checkout' },
+                    { label: 'Book'|t('coinpurse'), value: 'book' },
+                    { label: 'Donate'|t('coinpurse'), value: 'donate' },
+                    { label: 'Pay'|t('coinpurse'), value: 'pay' },
+                ],
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.selectField({
+                label: 'Theme'|t('coinpurse'),
+                name: 'settings[buttonTheme]',
+                value: settings.buttonTheme,
+                options: [
+                    { label: 'Dark'|t('coinpurse'), value: 'dark' },
+                    { label: 'Light'|t('coinpurse'), value: 'light' },
+                    { label: 'Light outline'|t('coinpurse'), value: 'light-outline' },
+                ],
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Height'|t('coinpurse'),
+                instructions: 'In pixels. Apple’s guidelines put the floor at 30 and the ceiling at 64.'|t('coinpurse'),
+                name: 'settings[buttonHeight]',
+                value: settings.buttonHeight,
+                type: 'number',
+                size: 5,
+                disabled: readOnly,
+            }) }}
+        </div>
+
+        <h2>{{ 'Apple Pay (direct driver only)'|t('coinpurse') }}</h2>
+
+        <div class="pane">
+            <p class="light">{{ 'Only needed when Coin Purse speaks Apple Pay itself. On Stripe, Stripe hosts the domain verification and holds the certificate.'|t('coinpurse') }}</p>
+
+            {{ forms.autosuggestField({
+                label: 'Merchant ID'|t('coinpurse'),
+                instructions: 'e.g. `merchant.com.example.store`'|t('coinpurse'),
+                name: 'settings[applePayMerchantId]',
+                value: settings.applePayMerchantId,
+                suggestEnvVars: true,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.autosuggestField({
+                label: 'Merchant identity certificate'|t('coinpurse'),
+                instructions: 'Absolute path to the PEM certificate. Keep it outside the web root.'|t('coinpurse'),
+                name: 'settings[applePayCertPath]',
+                value: settings.applePayCertPath,
+                suggestEnvVars: true,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.autosuggestField({
+                label: 'Merchant identity key'|t('coinpurse'),
+                instructions: 'Absolute path to the PEM private key, if it isn’t inside the certificate.'|t('coinpurse'),
+                name: 'settings[applePayKeyPath]',
+                value: settings.applePayKeyPath,
+                suggestEnvVars: true,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.autosuggestField({
+                label: 'Key passphrase'|t('coinpurse'),
+                name: 'settings[applePayKeyPassword]',
+                value: settings.applePayKeyPassword,
+                suggestEnvVars: true,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.textareaField({
+                label: 'Domain association file'|t('coinpurse'),
+                instructions: 'Paste the file Apple gives you, or the absolute path to it. Coin Purse serves it at `/.well-known/apple-developer-merchantid-domain-association`.'|t('coinpurse'),
+                name: 'settings[applePayDomainAssociation]',
+                value: settings.applePayDomainAssociation,
+                rows: 4,
+                class: 'code',
+                disabled: readOnly,
+            }) }}
+        </div>
+
+        <h2>{{ 'Google Pay (direct driver only)'|t('coinpurse') }}</h2>
+
+        <div class="pane">
+            {{ forms.selectField({
+                label: 'Environment'|t('coinpurse'),
+                name: 'settings[googlePayEnvironment]',
+                value: settings.googlePayEnvironment,
+                options: [
+                    { label: 'Test'|t('coinpurse'), value: 'TEST' },
+                    { label: 'Production'|t('coinpurse'), value: 'PRODUCTION' },
+                ],
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.autosuggestField({
+                label: 'Google Pay merchant ID'|t('coinpurse'),
+                instructions: 'From the Google Pay Business Console. Only required in production.'|t('coinpurse'),
+                name: 'settings[googlePayMerchantId]',
+                value: settings.googlePayMerchantId,
+                suggestEnvVars: true,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Gateway identifier'|t('coinpurse'),
+                instructions: 'The gateway Google should encrypt the token for, e.g. `braintree`. Your gateway’s documentation names it.'|t('coinpurse'),
+                name: 'settings[googlePayGateway]',
+                value: settings.googlePayGateway,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.autosuggestField({
+                label: 'Gateway merchant ID'|t('coinpurse'),
+                instructions: 'Your merchant ID *at that gateway*.'|t('coinpurse'),
+                name: 'settings[googlePayGatewayMerchantId]',
+                value: settings.googlePayGatewayMerchantId,
+                suggestEnvVars: true,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Card networks'|t('coinpurse'),
+                instructions: 'Comma-separated, in Google’s vocabulary: `VISA`, `MASTERCARD`, `AMEX`, `DISCOVER`, `JCB`, `INTERAC`.'|t('coinpurse'),
+                name: 'settings[allowedCardNetworks]',
+                value: settings.allowedCardNetworks|join(', '),
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Authentication methods'|t('coinpurse'),
+                instructions: '`PAN_ONLY`, `CRYPTOGRAM_3DS`, or both.'|t('coinpurse'),
+                name: 'settings[allowedAuthMethods]',
+                value: settings.allowedAuthMethods|join(', '),
+                disabled: readOnly,
+            }) }}
+        </div>
+
+        <h2>{{ 'Wallet token delivery (direct driver only)'|t('coinpurse') }}</h2>
+
+        <div class="pane">
+            <p class="light">{{ 'Gateway plugins don’t agree on what the field holding a wallet token is called. Left empty, Coin Purse looks for a known name on the gateway’s own payment form and the Diagnostics screen reports what it found.'|t('coinpurse') }}</p>
+
+            {{ forms.textField({
+                label: 'Token field'|t('coinpurse'),
+                instructions: 'e.g. `nonce`, `token`, `paymentData`.'|t('coinpurse'),
+                name: 'settings[tokenTargetAttribute]',
+                value: settings.tokenTargetAttribute,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.selectField({
+                label: 'Encoding'|t('coinpurse'),
+                name: 'settings[tokenEncoding]',
+                value: settings.tokenEncoding,
+                options: [
+                    { label: 'As received'|t('coinpurse'), value: 'raw' },
+                    { label: 'JSON'|t('coinpurse'), value: 'json' },
+                    { label: 'Base64'|t('coinpurse'), value: 'base64' },
+                ],
+                disabled: readOnly,
+            }) }}
+        </div>
+
+        <h2>{{ 'Housekeeping'|t('coinpurse') }}</h2>
+
+        <div class="pane">
+            {{ forms.lightswitchField({
+                label: 'Log express checkouts'|t('coinpurse'),
+                name: 'settings[loggingEnabled]',
+                on: settings.loggingEnabled,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Keep request payloads'|t('coinpurse'),
+                instructions: 'Payloads contain customer addresses and contact details. Off by default for that reason.'|t('coinpurse'),
+                name: 'settings[logPayloads]',
+                on: settings.logPayloads,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Keep log entries for'|t('coinpurse'),
+                instructions: 'Days. Zero keeps everything.'|t('coinpurse'),
+                name: 'settings[logRetentionDays]',
+                value: settings.logRetentionDays,
+                type: 'number',
+                size: 5,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.textField({
+                label: 'Express session lifetime'|t('coinpurse'),
+                instructions: 'Minutes a wallet sheet may stay open before the session is refused and the cart put back.'|t('coinpurse'),
+                name: 'settings[sessionLifetimeMinutes]',
+                value: settings.sessionLifetimeMinutes,
+                type: 'number',
+                size: 5,
+                disabled: readOnly,
+            }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Answer to `craft.webPayments`'|t('coinpurse'),
+                instructions: 'Lets templates written against the abandoned `ether/web-payments` plugin keep working. Ignored if that plugin is actually installed.'|t('coinpurse'),
+                name: 'settings[registerWebPaymentsAlias]',
+                on: settings.registerWebPaymentsAlias,
+                disabled: readOnly,
+            }) }}
+        </div>
+
+        {% if not readOnly %}
+            <div class="buttons">
+                <button type="submit" class="btn submit">{{ 'Save'|t('app') }}</button>
+            </div>
+        {% endif %}
+    </form>
+{% endblock %}

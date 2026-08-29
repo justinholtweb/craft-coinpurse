@@ -1,0 +1,72 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Coin Purse'|t('coinpurse') %}
+{% set selectedSubnavItem = 'diagnostics' %}
+
+{% block content %}
+    {% set failures = checks|filter(c => c.status == 'fail') %}
+    {% set warnings = checks|filter(c => c.status == 'warn') %}
+
+    <div class="pane">
+        {% if failures|length %}
+            <p class="error">
+                <strong>{{ '{count} things are stopping the button from working.'|t('coinpurse', { count: failures|length }) }}</strong>
+            </p>
+            <p>{{ 'A misconfigured wallet button doesn’t show an error — it simply doesn’t appear. Everything below is a reason it wouldn’t.'|t('coinpurse') }}</p>
+        {% elseif warnings|length %}
+            <p><strong>{{ 'Express checkout is working, with {count} things worth a look.'|t('coinpurse', { count: warnings|length }) }}</strong></p>
+        {% else %}
+            <p><strong>{{ 'Express checkout is ready.'|t('coinpurse') }}</strong></p>
+            <p>{{ 'What this can’t tell you is whether a given customer’s device has a card in its wallet. That part is only ever answerable in their browser.'|t('coinpurse') }}</p>
+        {% endif %}
+    </div>
+
+    <table class="data fullwidth">
+        <thead>
+            <tr>
+                <th>{{ 'Check'|t('coinpurse') }}</th>
+                <th>{{ 'Result'|t('coinpurse') }}</th>
+                <th>{{ 'What to do'|t('coinpurse') }}</th>
+            </tr>
+        </thead>
+        <tbody>
+            {% for check in checks %}
+                <tr>
+                    <td>
+                        {% if check.status == 'pass' %}
+                            <span class="status green" title="{{ 'Pass'|t('coinpurse') }}"></span>
+                        {% elseif check.status == 'warn' %}
+                            <span class="status orange" title="{{ 'Warning'|t('coinpurse') }}"></span>
+                        {% else %}
+                            <span class="status red" title="{{ 'Problem'|t('coinpurse') }}"></span>
+                        {% endif %}
+                        {{ check.label }}
+                    </td>
+                    <td>{{ check.detail }}</td>
+                    <td class="light">{{ check.fix }}</td>
+                </tr>
+            {% endfor %}
+        </tbody>
+    </table>
+
+    {% if summary|length %}
+        <h2>{{ 'Last seven days'|t('coinpurse') }}</h2>
+
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ 'Event'|t('coinpurse') }}</th>
+                    <th>{{ 'Count'|t('coinpurse') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for key, count in summary %}
+                    <tr>
+                        <td>{{ key }}</td>
+                        <td>{{ count }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

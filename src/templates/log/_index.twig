@@ -1,0 +1,44 @@
+{% extends '_layouts/cp' %}
+
+{% set title = 'Express checkout log'|t('coinpurse') %}
+{% set selectedSubnavItem = 'log' %}
+
+{% block content %}
+    {% if entries|length == 0 %}
+        <div class="pane">
+            <p>{{ 'Nothing logged yet.'|t('coinpurse') }}</p>
+        </div>
+    {% else %}
+        <table class="data fullwidth">
+            <thead>
+                <tr>
+                    <th>{{ 'When'|t('coinpurse') }}</th>
+                    <th>{{ 'Event'|t('coinpurse') }}</th>
+                    <th>{{ 'Wallet'|t('coinpurse') }}</th>
+                    <th>{{ 'Order'|t('coinpurse') }}</th>
+                    <th>{{ 'Summary'|t('coinpurse') }}</th>
+                    <th>{{ 'Took'|t('coinpurse') }}</th>
+                </tr>
+            </thead>
+            <tbody>
+                {% for entry in entries %}
+                    <tr>
+                        <td>
+                            <a href="{{ url('coinpurse/log/' ~ entry.id) }}">
+                                {{ entry.dateCreated ? entry.dateCreated|datetime('short') : '—' }}
+                            </a>
+                        </td>
+                        <td>
+                            <span class="status {{ entry.level == 'error' ? 'red' : (entry.level == 'warning' ? 'orange' : 'green') }}"></span>
+                            {{ entry.action }}
+                        </td>
+                        <td>{{ entry.wallet ?: entry.driver ?: '—' }}</td>
+                        <td>{{ entry.orderNumber ? entry.orderNumber|slice(0, 7) : '—' }}</td>
+                        <td>{{ entry.summary ?: entry.message|slice(0, 120) }}</td>
+                        <td>{{ entry.durationMs ? entry.durationMs ~ 'ms' : '—' }}</td>
+                    </tr>
+                {% endfor %}
+            </tbody>
+        </table>
+    {% endif %}
+{% endblock %}

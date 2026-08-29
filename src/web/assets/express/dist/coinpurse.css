@@ -1,0 +1,49 @@
+/*
+ * Coin Purse — the small amount of chrome the raw driver needs.
+ *
+ * Stripe's Express Checkout Element draws its own buttons and Google Pay's API draws its own, so
+ * the only thing styled here is the Apple Pay button, which Apple expects the site to render using
+ * the `-apple-pay-button` appearance. Everything else is layout.
+ */
+
+.coinpurse-button {
+    display: block;
+    width: 100%;
+}
+
+.coinpurse-button > * + * {
+    margin-top: 8px;
+}
+
+.coinpurse-apple-pay {
+    -webkit-appearance: -apple-pay-button;
+    appearance: -apple-pay-button;
+    -apple-pay-button-type: buy;
+    display: block;
+    width: 100%;
+    min-height: 30px;
+    border: 0;
+    padding: 0;
+    margin: 0;
+    cursor: pointer;
+}
+
+.coinpurse-apple-pay--dark {
+    -apple-pay-button-style: black;
+}
+
+.coinpurse-apple-pay--light {
+    -apple-pay-button-style: white;
+}
+
+.coinpurse-apple-pay--light-outline {
+    -apple-pay-button-style: white-outline;
+}
+
+/* Browsers without the Apple Pay appearance never render this button at all, but a stray
+   unstyled <button> would be worse than nothing if one ever did. */
+@supports not (-webkit-appearance: -apple-pay-button) {
+    .coinpurse-apple-pay {
+        display: none;
+    }
+}
