@@ -23,7 +23,8 @@
         }
     ],
     "support": {
-        "email": "justin@justinholt.com"
+        "email": "justin@justinholt.com",
+        "docs": "https://justinholt.com/plugins/craft-coinpurse/docs"
     },
     "minimum-stability": "stable",
     "prefer-stable": true,
@@ -54,7 +55,7 @@
         "handle": "coinpurse",
         "developer": "Justin Holt",
         "developerUrl": "https://justinholt.com",
-        "documentationUrl": "https://github.com/justinholtweb/craft-coinpurse/blob/main/README.md",
+        "documentationUrl": "https://justinholt.com/plugins/craft-coinpurse/docs",
         "changelogUrl": "https://raw.githubusercontent.com/justinholtweb/craft-coinpurse/main/CHANGELOG.md",
         "class": "justinholtweb\\coinpurse\\Plugin"
     }
