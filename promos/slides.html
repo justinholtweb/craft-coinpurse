@@ -1,0 +1,644 @@
+<!DOCTYPE html>
+<!-- handmade: hand-tuned deck -->
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Coin Purse — Plugin Store promos</title>
+<link rel="stylesheet" href="fonts.css">
+<style>
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  :root {
+    --charcoal: #0f0f1a;
+    --charcoal-light: #1a1a2e;
+    --charcoal-lighter: #252540;
+    --accent: #BA7B4E;
+    --accent-light: #F0B88A;
+    --gold: #ffd166;
+    --off-white: #f0f0f5;
+  }
+
+  html { background: #000; }
+
+  body {
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: var(--off-white);
+    -webkit-font-smoothing: antialiased;
+  }
+
+  /* ---- slide shell ---------------------------------------------------- */
+  .slide {
+    position: relative;
+    width: 1920px;
+    height: 1080px;
+    overflow: hidden;
+    background:
+      radial-gradient(ellipse at 85% 15%, rgba(186, 123, 78, 0.30) 0%, transparent 40%),
+      radial-gradient(ellipse at 65% 5%,  rgba(240, 184, 138, 0.12) 0%, transparent 35%),
+      radial-gradient(ellipse at 15% 85%, rgba(255, 209, 102, 0.07) 0%, transparent 40%),
+      radial-gradient(ellipse at 35% 95%, rgba(146, 86, 46, 0.16) 0%, transparent 35%),
+      linear-gradient(135deg, #0f0f1a 0%, #17120f 30%, #1c1510 60%, #0f0f1a 100%);
+  }
+
+  /* Oversized watermark: the mark with the tile stripped, because a rounded square at this
+     size reads as a grey box across the slide rather than as the icon. Anchored bottom-right and
+     running off the right and bottom edges, so the purse sits behind the diagrams rather than the
+     headline. */
+  .slide::after {
+    content: '';
+    position: absolute;
+    top: 22%;
+    right: -22%;
+    width: 1400px;
+    height: 1400px;
+    background: url('assets/watermark.svg') no-repeat center / contain;
+    opacity: 0.03;
+    pointer-events: none;
+  }
+
+  /* The cover has the icon itself; a watermark behind it reads as its shadow. */
+  .cover::after { display: none; }
+
+  .slide::before {
+    content: '';
+    position: absolute;
+    inset: 0 0 auto 0;
+    height: 6px;
+    background: linear-gradient(90deg, var(--accent), var(--accent-light), var(--gold), var(--accent));
+    z-index: 5;
+  }
+
+  .inner {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    padding: 118px 130px;
+    display: flex;
+    align-items: center;
+  }
+
+  /* ---- type ------------------------------------------------------------ */
+  .eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 18px;
+    font-size: 20px;
+    font-weight: 500;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    color: rgba(240, 240, 245, 0.62);
+    margin-bottom: 34px;
+  }
+  .eyebrow .rule {
+    width: 58px;
+    height: 3px;
+    border-radius: 2px;
+    background: var(--accent-light);
+  }
+
+  h1, h2 {
+    font-family: 'Jersey 20', sans-serif;
+    font-weight: 400;
+    line-height: 0.9;
+    letter-spacing: 0.005em;
+  }
+
+  .gradient-text {
+    background: linear-gradient(100deg, #E19F6D 0%, #F0B88A 38%, #ffd166 68%, #E19F6D 100%);
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
+  }
+
+  .lede {
+    font-size: 34px;
+    line-height: 1.5;
+    color: rgba(240, 240, 245, 0.72);
+  }
+
+  .mono {
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+  }
+
+  /* ---- cover ----------------------------------------------------------- */
+  .cover .inner { gap: 90px; }
+  .cover .copy { flex: 1 1 auto; }
+  .cover h1 { font-size: 168px; margin-bottom: 26px; }
+  .cover .tagline {
+    font-size: 46px;
+    line-height: 1.25;
+    color: rgba(240, 240, 245, 0.78);
+    margin-bottom: 46px;
+    max-width: 900px;
+  }
+  .cover .badges { display: flex; gap: 18px; align-items: center; }
+  .badge {
+    font-size: 24px;
+    font-weight: 600;
+    letter-spacing: 0.06em;
+    text-transform: uppercase;
+    padding: 14px 26px;
+    border-radius: 999px;
+    border: 2px solid rgba(240, 184, 138, 0.45);
+    color: rgba(240, 240, 245, 0.85);
+  }
+  .badge.price { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .cover .mark { flex: 0 0 auto; }
+  .cover .mark img { width: 420px; height: 420px; display: block; }
+
+  /* ---- feature slides -------------------------------------------------- */
+  .feature .inner { padding-right: 0; }
+  .feature .copy { width: 760px; flex: 0 0 auto; }
+  .feature h2 { font-size: 96px; margin-bottom: 30px; }
+  .feature .lede { max-width: 700px; }
+
+  .points { list-style: none; margin-top: 40px; display: flex; flex-direction: column; gap: 20px; }
+  .points li {
+    display: flex;
+    gap: 16px;
+    font-size: 25px;
+    line-height: 1.4;
+    color: rgba(240, 240, 245, 0.6);
+  }
+  .points li svg { flex: 0 0 auto; margin-top: 4px; }
+
+  /* ---- screenshot slabs ------------------------------------------------ */
+  .shot {
+    position: absolute;
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 30px 90px rgba(0, 0, 0, 0.55);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+  .shot .chrome {
+    height: 40px;
+    background: #2a2a3e;
+    background-image:
+      radial-gradient(circle at 24px 20px, #ff5f57 6px, transparent 6.5px),
+      radial-gradient(circle at 48px 20px, #ffbd2e 6px, transparent 6.5px),
+      radial-gradient(circle at 72px 20px, #28ca42 6px, transparent 6.5px);
+  }
+  .shot .viewport { overflow: hidden; background: #e4edf6; position: relative; }
+  .shot img { display: block; width: 100%; position: absolute; left: 0; }
+
+  .caption {
+    font-size: 22px;
+    letter-spacing: 0.16em;
+    text-transform: uppercase;
+    color: rgba(240, 240, 245, 0.5);
+    margin-bottom: 14px;
+  }
+  .caption b { color: var(--accent-light); font-weight: 600; }
+
+  /* ---- before / after -------------------------------------------------- */
+  .compare .inner { flex-direction: column; align-items: flex-start; padding-bottom: 60px; }
+  .compare h2 { font-size: 88px; margin-bottom: 18px; }
+  .compare .lede { font-size: 30px; max-width: 1280px; margin-bottom: 44px; }
+  .compare .pair { display: flex; gap: 56px; width: 100%; }
+  .compare .pane { flex: 1 1 0; min-width: 0; }
+  .compare .shot { position: relative; }
+
+  .arrow {
+    position: absolute;
+    left: 50%;
+    top: 640px;
+    transform: translateX(-50%);
+    z-index: 4;
+    width: 92px;
+    height: 92px;
+    border-radius: 999px;
+    background: var(--accent);
+    box-shadow: 0 12px 40px rgba(186, 123, 78, 0.55);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+  }
+
+  /* ---- closing panel --------------------------------------------------- */
+  .closing .inner { flex-direction: column; align-items: flex-start; justify-content: center; }
+  .closing h2 { font-size: 104px; margin-bottom: 34px; }
+  .closing .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 26px 54px;
+    margin-top: 20px;
+    width: 1420px;
+  }
+  .closing .cell {
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    border-radius: 14px;
+    background: rgba(37, 37, 64, 0.42);
+    padding: 28px 32px;
+  }
+  .closing .cell b { display: block; font-size: 28px; margin-bottom: 8px; color: var(--off-white); }
+  .closing .cell span { font-size: 23px; line-height: 1.45; color: rgba(240, 240, 245, 0.58); }
+
+  /* ---- layout diagram slide -------------------------------------------- */
+  .diagram {
+    position: absolute;
+    right: 130px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 800px;
+    border-radius: 14px;
+    border: 1px solid rgba(255, 255, 255, 0.09);
+    background: rgba(15, 15, 26, 0.72);
+    padding: 44px 48px;
+    font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 26px;
+    line-height: 1.65;
+    color: rgba(240, 240, 245, 0.72);
+    white-space: pre;
+  }
+  .diagram .tab { color: var(--off-white); font-weight: 600; }
+  .diagram .marker { color: var(--accent-light); }
+  .diagram .dim { color: rgba(240, 240, 245, 0.38); }
+  .diagram .gold { color: var(--gold); }
+
+  /* ---- footer lockup --------------------------------------------------- */
+  .footer {
+    position: absolute;
+    left: 130px;
+    bottom: 54px;
+    z-index: 4;
+    display: flex;
+    align-items: center;
+    gap: 16px;
+    font-size: 22px;
+    color: rgba(240, 240, 245, 0.42);
+  }
+  .footer img { width: 40px; height: 40px; border-radius: 9px; }
+  .footer b { color: rgba(240, 240, 245, 0.72); font-weight: 600; }
+
+  /* Only render the requested slide when screenshotting */
+  body.single .slide { display: none; }
+  body.single .slide.active { display: block; }
+
+  /* ---- control-panel screenshot cards -------------------------------
+     Self-contained: these cards must drop into any deck in the family, and the decks
+     do not share a class system. Only --accent and --off-white are relied on, both of
+     which every deck defines, and both have fallbacks. */
+  .slide.cpcard { display: block; }
+  .cpcard .cpc-inner {
+    position: relative;
+    z-index: 2;
+    height: 100%;
+    padding: 112px 120px;
+    display: flex;
+    align-items: center;
+    gap: 70px;
+  }
+  .cpcard .cpc-copy { width: 660px; flex: 0 0 660px; }
+
+  .cpcard .cpc-eyebrow {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    margin-bottom: 34px;
+    font-size: 21px;
+    font-weight: 600;
+    letter-spacing: 0.22em;
+    text-transform: uppercase;
+    color: var(--accent-light, #7aa2c8);
+  }
+  .cpcard .cpc-eyebrow i {
+    display: block;
+    width: 62px;
+    height: 3px;
+    background: var(--accent-light, #7aa2c8);
+    border-radius: 2px;
+  }
+
+  .cpcard .cpc-h2 {
+    font-family: 'Jersey 20', 'Inter', sans-serif;
+    font-size: 88px;
+    line-height: 0.96;
+    font-weight: 400;
+    letter-spacing: 0.005em;
+    margin: 0 0 28px;
+    color: var(--off-white, #f0f0f5);
+  }
+
+  .cpcard .cpc-lede {
+    font-size: 33px;
+    line-height: 1.42;
+    color: rgba(240, 240, 245, 0.66);
+    margin: 0;
+  }
+
+  .cpcard .cpc-points { list-style: none; margin: 40px 0 0; padding: 0; }
+  .cpcard .cpc-points li {
+    display: flex;
+    align-items: flex-start;
+    gap: 16px;
+    font-size: 26px;
+    line-height: 1.5;
+    color: rgba(240, 240, 245, 0.72);
+    margin-bottom: 18px;
+  }
+  .cpcard .cpc-points li::before {
+    content: '';
+    flex: 0 0 auto;
+    width: 10px;
+    height: 10px;
+    margin-top: 14px;
+    border-radius: 50%;
+    background: var(--accent, #7aa2c8);
+  }
+
+  .cpcard .cpc-panel { flex: 1 1 auto; min-width: 0; }
+
+  .cpcard .cpc-frame {
+    border-radius: 14px;
+    overflow: hidden;
+    background: #e4edf6;
+    border: 1px solid rgba(255, 255, 255, 0.10);
+    box-shadow: 0 40px 90px rgba(0, 0, 0, 0.55), 0 6px 18px rgba(0, 0, 0, 0.35);
+  }
+  .cpcard .cpc-chrome {
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    padding: 13px 18px;
+    background: linear-gradient(180deg, #2a2a3d 0%, #21212f 100%);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.35);
+  }
+  .cpcard .cpc-chrome b { width: 12px; height: 12px; border-radius: 50%; background: rgba(255,255,255,0.16); }
+  .cpcard .cpc-chrome b:nth-child(1) { background: #ff5f57; }
+  .cpcard .cpc-chrome b:nth-child(2) { background: #febc2e; }
+  .cpcard .cpc-chrome b:nth-child(3) { background: #28c840; }
+  .cpcard .cpc-chrome em {
+    margin-left: 12px;
+    font-style: normal;
+    font-size: 19px;
+    letter-spacing: 0.02em;
+    color: rgba(240, 240, 245, 0.45);
+  }
+  .cpcard .cpc-frame img { display: block; width: 100%; height: auto; }
+
+  /* A tall capture is anchored to its top — the interesting rows are always first.
+     The fade makes the cut read as "there is more" rather than as a broken edge. */
+  .cpcard .cpc-frame.cpc-clip { max-height: 620px; position: relative; }
+  .cpcard .cpc-frame.cpc-clip img { object-fit: cover; object-position: top center; max-height: 580px; }
+  .cpcard .cpc-frame.cpc-clip::after {
+    content: '';
+    position: absolute;
+    inset: auto 0 0 0;
+    height: 130px;
+    background: linear-gradient(180deg, rgba(228,237,246,0) 0%, rgba(228,237,246,0.92) 78%, #e4edf6 100%);
+  }
+
+  .cpcard .cpc-caption {
+    display: block;
+    margin-top: 20px;
+    font-size: 22px;
+    line-height: 1.45;
+    color: rgba(240, 240, 245, 0.52);
+  }
+  .cpcard .cpc-caption b { color: rgba(240, 240, 245, 0.80); font-weight: 600; }
+
+
+  /* ---- shared diagram panel --------------------------------------------- */
+  .panel {
+    position: absolute; right: 120px; top: 50%; transform: translateY(-50%);
+    border-radius: 14px; border: 1px solid rgba(255,255,255,0.09); background: rgba(15,15,26,0.74);
+  }
+  .ck { color: #5ee0a0; }
+  .no { color: #ff6b6b; }
+
+  /* ---- two routes (slide 2) --------------------------------------------- */
+  .routes .inner { flex-direction: column; align-items: flex-start; justify-content: center; }
+  .routes h2 { font-size: 96px; margin-bottom: 26px; }
+  .routes .lede { max-width: 1320px; font-size: 31px; margin-bottom: 52px; }
+  .routes .rows { display: flex; flex-direction: column; gap: 30px; width: 1660px; }
+  .route-row { display: flex; align-items: center; gap: 26px; }
+  .route-row .who { flex: 0 0 300px; font-size: 24px; line-height: 1.35; color: rgba(240,240,245,0.55); }
+  .route-row .who b { display: block; font-size: 30px; color: var(--off-white); margin-bottom: 4px; }
+  .route-row .steps { display: flex; align-items: center; gap: 14px; flex: 1 1 auto; }
+  .step { border-radius: 12px; padding: 22px 24px; font-size: 24px; line-height: 1.3; background: rgba(240,240,245,0.07); border: 1px solid rgba(255,255,255,0.08); color: rgba(240,240,245,0.62); white-space: nowrap; }
+  .step small { display: block; font-size: 17px; letter-spacing: 0.12em; text-transform: uppercase; color: rgba(240,240,245,0.38); margin-bottom: 6px; }
+  .sep { color: rgba(240,240,245,0.28); font-size: 26px; }
+  .route-row.express .step { background: rgba(186,123,78,0.22); border-color: rgba(240,184,138,0.5); color: var(--off-white); }
+  .route-row.express .step small { color: var(--accent-light); }
+  .route-row.express .step.done { background: var(--accent); border-color: var(--accent); }
+  .route-row.express .step.done small { color: rgba(255,255,255,0.8); }
+
+  /* ---- the sheet's wire (slide 3) --------------------------------------- */
+  .wire {
+    width: 1010px; padding: 40px 44px; font-family: 'JetBrains Mono', ui-monospace, 'SF Mono', Menlo, monospace;
+    font-size: 21px; line-height: 1.95; color: rgba(240,240,245,0.62); white-space: pre;
+  }
+  .wire .hd { color: rgba(240,240,245,0.4); }
+  .wire .ask { color: var(--gold); }
+  .wire .done { color: var(--accent-light); font-weight: 600; }
+
+  /* ---- signed payload (slide 4) ----------------------------------------- */
+  .signed { width: 960px; padding: 36px 42px; font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; }
+  .signed .code { font-size: 22px; line-height: 1.7; color: rgba(240,240,245,0.7); white-space: pre; padding-bottom: 26px; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .signed .code .k { color: var(--accent-light); }
+  .signed .code .s { color: var(--gold); }
+  .signed .split { display: flex; gap: 30px; padding: 26px 0; border-bottom: 1px solid rgba(255,255,255,0.08); }
+  .signed .split div { flex: 1 1 0; font-family: 'Inter', sans-serif; font-size: 21px; line-height: 1.5; color: rgba(240,240,245,0.58); }
+  .signed .split b { display: block; font-size: 16px; letter-spacing: 0.16em; text-transform: uppercase; margin-bottom: 8px; }
+  .signed .tamper { padding-top: 24px; font-size: 21px; line-height: 1.8; color: rgba(240,240,245,0.62); white-space: pre; }
+
+  /* ---- two modes (slide 5) ---------------------------------------------- */
+  .modes { width: 940px; display: flex; flex-direction: column; gap: 30px; }
+  .mode { border-radius: 14px; border: 1px solid rgba(255,255,255,0.09); background: rgba(15,15,26,0.74); padding: 32px 40px; }
+  .mode .top { display: flex; align-items: baseline; justify-content: space-between; margin-bottom: 14px; }
+  .mode .top b { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 28px; color: var(--off-white); }
+  .mode .top span { font-size: 22px; color: var(--accent-light); }
+  .mode p { font-size: 23px; line-height: 1.5; color: rgba(240,240,245,0.6); }
+  .mode .chips { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 18px; }
+  .mode .chip { font-size: 19px; padding: 8px 16px; border-radius: 999px; border: 1px solid rgba(240,184,138,0.4); color: rgba(240,240,245,0.78); }
+
+  /* ---- two drivers (slide 7) -------------------------------------------- */
+  .drivers .inner { flex-direction: column; align-items: flex-start; justify-content: center; }
+  .drivers h2 { font-size: 96px; margin-bottom: 26px; }
+  .drivers .lede { max-width: 1300px; font-size: 31px; margin-bottom: 48px; }
+  .drivers .cards { display: grid; grid-template-columns: 1fr 1fr; gap: 36px; width: 1660px; }
+  .drivers .card { border-radius: 14px; border: 1px solid rgba(240,184,138,0.32); background: rgba(186,123,78,0.13); padding: 36px 40px; }
+  .drivers .card b { display: block; font-size: 34px; margin-bottom: 6px; color: var(--off-white); }
+  .drivers .card em { display: block; font-style: normal; font-size: 19px; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent-light); margin-bottom: 16px; }
+  .drivers .card span { font-size: 23px; line-height: 1.5; color: rgba(240,240,245,0.62); }
+  .drivers .migrate { margin-top: 40px; font-size: 25px; color: rgba(240,240,245,0.5); }
+  .drivers .migrate b { color: rgba(240,240,245,0.8); font-weight: 600; }
+  .drivers .migrate code { font-family: 'JetBrains Mono', ui-monospace, Menlo, monospace; font-size: 23px; color: var(--accent-light); }
+</style>
+</head>
+<body>
+
+<!-- 1 · Cover ============================================================ -->
+<section class="slide cover" data-n="1">
+  <div class="inner">
+    <div class="copy">
+      <div class="eyebrow"><span class="rule"></span> Craft Commerce 5</div>
+      <h1 class="gradient-text">Coin Purse</h1>
+      <p class="tagline">Apple Pay and Google Pay express checkout for Craft Commerce.</p>
+      <div class="badges">
+        <span class="badge price">$79</span>
+        <span class="badge">One edition</span>
+        <span class="badge">Any gateway</span>
+      </div>
+    </div>
+    <div class="mark"><img src="assets/icon.svg" alt=""></div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Coin Purse</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-coinpurse</div>
+</section>
+
+<!-- 2 · One tap from the first page ====================================== -->
+<section class="slide routes" data-n="2">
+  <div class="inner">
+    <div class="eyebrow"><span class="rule"></span> Express, not just a wallet button</div>
+    <h2>One tap, from the<br>first page they see</h2>
+    <p class="lede">The Stripe gateway already shows Apple Pay, at the last step, after the forms. Coin Purse puts the wallet on the product page, and the wallet fills in everything the forms were asking for.</p>
+    <div class="rows">
+      <div class="route-row">
+        <div class="who"><b>Payment Element</b>at the final step</div>
+        <div class="steps">
+          <div class="step"><small>1</small>Email</div><span class="sep">→</span>
+          <div class="step"><small>2</small>Address form</div><span class="sep">→</span>
+          <div class="step"><small>3</small>Shipping method</div><span class="sep">→</span>
+          <div class="step"><small>4</small>Card or wallet</div><span class="sep">→</span>
+          <div class="step"><small>5</small>Place order</div>
+        </div>
+      </div>
+      <div class="route-row express">
+        <div class="who"><b>Coin Purse</b>product page, cart, anywhere</div>
+        <div class="steps">
+          <div class="step"><small>1</small>Tap</div><span class="sep">→</span>
+          <div class="step"><small>2</small>Wallet sheet: name, email, address, rate</div><span class="sep">→</span>
+          <div class="step done"><small>3</small>Order placed</div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Coin Purse</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-coinpurse</div>
+</section>
+
+<!-- 3 · Shipping quoted inside the sheet ================================= -->
+<section class="slide feature" data-n="3">
+  <div class="inner">
+    <div class="copy" style="width: 600px;">
+      <div class="eyebrow"><span class="rule"></span> Live in the sheet</div>
+      <h2>Every number<br>is the<br>server's</h2>
+      <p class="lede" style="max-width: 580px;">Shipping is priced from the address as the customer picks it, and the browser never adds anything up.</p>
+      <ul class="points">
+        <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F0B88A" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg> <span class="t">Works with redacted wallet addresses</span></li>
+        <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F0B88A" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg> <span class="t">A total that moved is refused, not charged</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel wire"><span class="hd">wallet sheet                  coinpurse/express/…</span>
+opens                         <span class="ask">start</span>     $42.00, rate pending
+address  Portland OR 97214    <span class="ask">address</span>   Standard  $6.00
+                                        Next day $14.00
+                                        total    $48.00
+picks    Next day             <span class="ask">shipping</span>  total    $56.00
+authorises  expected 5600     <span class="ask">pay</span>       order 5600  <span class="ck">✓ charged</span>
+
+<span class="hd">…or, if a rate changed under the sheet</span>
+authorises  expected 4800     <span class="ask">pay</span>       order 5600  <span class="no">✕ refused</span>
+                                        <span class="done">nothing charged</span></div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Coin Purse</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-coinpurse</div>
+</section>
+
+<!-- 4 · Signed buttons =================================================== -->
+<section class="slide feature" data-n="4">
+  <div class="inner">
+    <div class="copy" style="width: 600px;">
+      <div class="eyebrow"><span class="rule"></span> The endpoints are anonymous</div>
+      <h2>The button<br>is signed</h2>
+      <p class="lede" style="max-width: 580px;">What a button sells is signed with Craft's own security key when the page renders. The browser can't edit it.</p>
+      <ul class="points">
+        <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F0B88A" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg> <span class="t">No swapping in a cheaper variant</span></li>
+        <li><svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="#F0B88A" stroke-width="3"><path d="M5 13l4 4L19 7" stroke-linecap="round" stroke-linejoin="round"/></svg> <span class="t">No inventing a quantity</span></li>
+      </ul>
+    </div>
+  </div>
+  <div class="panel signed">
+    <div class="code">{{ craft.coinpurse.button({
+    <span class="k">items</span>: [{ id: 4120, qty: 1 }],
+    <span class="k">requestShipping</span>: <span class="s">'delivery'</span>,
+    <span class="k">onComplete</span>: { redirect: <span class="s">'/thanks?number={number}'</span> },
+}) }}</div>
+    <div class="split">
+      <div><b class="ck">Signed</b>Items, quantities, options, notes, what the sheet asks for, site, gateway, expiry</div>
+      <div><b style="color: rgba(240,240,245,0.45);">Not signed</b>How the button looks, and where to go afterwards</div>
+    </div>
+    <div class="tamper">payload  id 4120 → 4119   <span class="hd">the $9 variant</span>
+<span class="no">400      Invalid express checkout payload.</span></div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Coin Purse</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-coinpurse</div>
+</section>
+
+<!-- 5 · The cart is not collateral damage ================================ -->
+<section class="slide feature" data-n="5">
+  <div class="inner">
+    <div class="copy" style="width: 620px;">
+      <div class="eyebrow"><span class="rule"></span> Customers close sheets</div>
+      <h2>The cart isn't<br>collateral<br>damage</h2>
+      <p class="lede" style="max-width: 600px;">A sheet has to write an address onto an order to price it. Coin Purse makes sure nothing sticks.</p>
+    </div>
+  </div>
+  <div class="panel modes" style="background: none; border: 0;">
+    <div class="mode">
+      <div class="top"><b>items: [ … ]</b><span>Buy now</span></div>
+      <p>Builds a detached order with its own number, never put in the session. The cart they've been filling for twenty minutes isn't touched.</p>
+    </div>
+    <div class="mode">
+      <div class="top"><b>cart: cart</b><span>Pay for the cart</span></div>
+      <p>Uses the real cart, so coupons, gift notes and custom fields come along. Before the sheet opens it snapshots</p>
+      <div class="chips"><span class="chip">address</span><span class="chip">shipping method</span><span class="chip">email</span></div>
+      <p style="margin-top: 18px;">and puts them back on cancel, failure or expiry. A scheduled <span class="mono" style="color: var(--accent-light);">coinpurse/sessions/reap</span> catches the tabs that just closed.</p>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Coin Purse</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-coinpurse</div>
+</section>
+
+<!-- 6 · Why is there no button? (real CP screenshot) ===================== -->
+<section class="slide cpcard" data-n="6">
+  <div class="cpc-inner">
+    <div class="cpc-copy">
+      <div class="cpc-eyebrow"><i></i> In the control panel</div>
+      <h2 class="cpc-h2">Why is there<br>no button?</h2>
+      <p class="cpc-lede">A misconfigured wallet button shows no error. It just isn't there. Diagnostics lists every reason, and what to do about it.</p>
+      <ul class="cpc-points">
+        <li><span>The same checks as <span class="mono" style="color: var(--accent-light);">coinpurse/diagnose</span>, which exits non-zero in a deploy script</span></li>
+      </ul>
+    </div>
+    <div class="cpc-panel">
+      <figure class="cpc-frame">
+        <div class="cpc-chrome"><b></b><b></b><b></b><em>Coin Purse → Diagnostics</em></div>
+        <img src="shots/coinpurse-diagnostics.png" alt="">
+      </figure>
+    </div>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Coin Purse</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-coinpurse</div>
+</section>
+
+<!-- 7 · Any gateway ====================================================== -->
+<section class="slide drivers" data-n="7">
+  <div class="inner">
+    <div class="eyebrow"><span class="rule"></span> Two drivers, picked for you</div>
+    <h2>Stripe, or any other gateway</h2>
+    <p class="lede">Payments stay your gateway's. Transactions, status emails, captures and refunds are Commerce's own code either way.</p>
+    <div class="cards">
+      <div class="card"><b>Stripe Express Checkout Element</b><em>craftcms/commerce-stripe</em><span>Commerce creates the PaymentIntent, the browser confirms it with the wallet, Commerce finishes it. Stripe holds the Apple Pay certificate and the domain verification.</span></div>
+      <div class="card"><b>Apple Pay JS and Google Pay API</b><em>Every other Commerce gateway</em><span>Spoken directly. Both wallets encrypt the token to your gateway, so it passes through the site opaque and lands on the gateway's own payment form.</span></div>
+    </div>
+    <p class="migrate"><b>Coming from Web Payments?</b> Same option names, and <code>craft.webPayments.button()</code> keeps working.</p>
+  </div>
+  <div class="footer"><img src="assets/icon.svg" alt=""> <b>Coin Purse</b> &nbsp;·&nbsp; justinholt.com/plugins/craft-coinpurse</div>
+</section>
+
+<script>
+  var n = new URLSearchParams(location.search).get('s');
+  if (n) {
+    document.body.classList.add('single');
+    var el = document.querySelector('.slide[data-n="' + n + '"]');
+    if (el) el.classList.add('active');
+  }
+</script>
+</body>
+</html>
