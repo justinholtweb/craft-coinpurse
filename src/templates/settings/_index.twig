@@ -22,7 +22,11 @@
 
     {% if readOnly %}
         <div class="pane">
-            <p>{{ 'Admin changes are disabled in this environment, so these settings are read-only.'|t('coinpurse') }}</p>
+            {% if not currentUser.admin %}
+                <p>{{ 'Only admins can change these settings, because they live in project config and some of them are served publicly.'|t('coinpurse') }}</p>
+            {% else %}
+                <p>{{ 'Admin changes are disabled in this environment, so these settings are read-only.'|t('coinpurse') }}</p>
+            {% endif %}
         </div>
     {% endif %}
 
@@ -246,7 +250,7 @@
 
             {{ forms.textareaField({
                 label: 'Domain association file'|t('coinpurse'),
-                instructions: 'Paste the file Apple gives you, or the absolute path to it. Coin Purse serves it at `/.well-known/apple-developer-merchantid-domain-association`.'|t('coinpurse'),
+                instructions: 'Paste the file Apple gives you, or the absolute path to it inside your project, keeping Apple’s filename. Coin Purse serves it at `/.well-known/apple-developer-merchantid-domain-association`.'|t('coinpurse'),
                 name: 'settings[applePayDomainAssociation]',
                 value: settings.applePayDomainAssociation,
                 rows: 4,

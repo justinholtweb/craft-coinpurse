@@ -1,5 +1,21 @@
 # Release Notes for Coin Purse
 
+## 5.0.1
+
+### Security
+
+- Coin Purse's settings can now only be saved by admins, and only where `allowAdminChanges` is on.
+  A user with only the `coinpurse-manage` permission could previously set the Apple Pay domain
+  association to an environment variable or a file path, such as the security key or `.env`, and
+  the public domain-association URL would then serve it to anyone.
+- A domain association path is now only followed to a file named
+  `apple-developer-merchantid-domain-association` inside the project. Anything else is not served.
+- The anonymous `express/start` and Apple Pay merchant validation endpoints are now rate limited per
+  IP address, since each call creates an order or makes a request to Apple.
+- Errors on the anonymous express and Apple Pay endpoints no longer show internal details, such as
+  certificate paths, to customers. Payment messages meant for customers, like a declined card, are
+  still shown, and the full error is logged. In devMode the detail is still shown.
+
 ## 5.0.0
 
 Initial release.

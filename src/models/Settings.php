@@ -241,15 +241,34 @@ class Settings extends Model
         }
 
         // Merchants paste either the file's contents or a path to it. Apple's file is a single
-        // long line of base64-ish text with no slashes at the start, so a leading `/` or a `.txt`
-        // suffix is an unambiguous signal that this is a path.
+        // long line of base64-ish text with no slashes at the start, so a leading `/` is an
+        // unambiguous signal that this is a path.
         $trimmed = trim($value);
 
-        if (str_starts_with($trimmed, '/') && is_file($trimmed) && is_readable($trimmed)) {
-            return (string)file_get_contents($trimmed);
+        if (str_starts_with($trimmed, '/')) {
+            // Whatever this returns is served to anybody at a public URL, so a path is only
+            // followed to Apple's own file, inside the project. `/var/www/html/.env` is a path too.
+            return self::isDomainAssociationFile($trimmed) ? (string)file_get_contents($trimmed) : null;
         }
 
         return $trimmed;
+    }
+
+    /**
+     * Whether a path is an Apple Pay domain association file this site may serve: named the way
+     * Apple names it, and inside the project root once symlinks and `..` are resolved.
+     */
+    public static function isDomainAssociationFile(string $path): bool
+    {
+        $real = realpath($path);
+        $root = realpath(Craft::getAlias('@root'));
+
+        if ($real === false || $root === false || !is_file($real) || !is_readable($real)) {
+            return false;
+        }
+
+        return str_starts_with(basename($real), 'apple-developer-merchantid-domain-association')
+            && str_starts_with($real, rtrim($root, '/') . '/');
     }
 
     /**

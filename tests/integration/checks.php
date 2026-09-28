@@ -1272,6 +1272,110 @@ try {
             ?: 'got ' . $response->getStatusCode() . ': ' . substr((string)$response->getBody(), 0, 120);
     });
 
+    // Whatever the domain association setting resolves to is served to anybody, so a path is only
+    // followed to Apple's own file inside the project. Until 5.0.1 any readable path was served,
+    // and a user with only `coinpurse-manage` could publish `.env` this way.
+    $secretFile = Craft::getAlias('@root') . '/storage/runtime/coinpurse-check-secret.txt';
+    $appleFile = Craft::getAlias('@root') . '/storage/runtime/apple-developer-merchantid-domain-association';
+    $outsideFile = sys_get_temp_dir() . '/apple-developer-merchantid-domain-association';
+    file_put_contents($secretFile, 'COINPURSE-CHECK-SECRET');
+    file_put_contents($appleFile, 'COINPURSE-CHECK-APPLE-FILE');
+    file_put_contents($outsideFile, 'COINPURSE-CHECK-OUTSIDE');
+
+    try {
+        check('a path to a file that is not Apple’s is never served', function() use ($client, $originalSettings, $gateway, $secretFile) {
+            applySettings(array_merge($originalSettings, ['gatewayId' => $gateway->id, 'applePayDomainAssociation' => $secretFile]));
+            $body = (string)$client->get('.well-known/apple-developer-merchantid-domain-association')->getBody();
+
+            return !str_contains($body, 'COINPURSE-CHECK-SECRET') ?: 'the secret file was served';
+        });
+
+        check('Apple’s file outside the project is not served either', function() use ($originalSettings, $gateway, $outsideFile) {
+            applySettings(array_merge($originalSettings, ['gatewayId' => $gateway->id, 'applePayDomainAssociation' => $outsideFile]));
+
+            return Plugin::getInstance()->getSettings()->getApplePayDomainAssociation() === null ?: 'it resolved';
+        });
+
+        check('Apple’s file inside the project is served', function() use ($client, $originalSettings, $gateway, $appleFile) {
+            applySettings(array_merge($originalSettings, ['gatewayId' => $gateway->id, 'applePayDomainAssociation' => $appleFile]));
+            $body = (string)$client->get('.well-known/apple-developer-merchantid-domain-association')->getBody();
+
+            return trim($body) === 'COINPURSE-CHECK-APPLE-FILE' ?: 'got: ' . substr($body, 0, 120);
+        });
+    } finally {
+        applySettings(array_merge($originalSettings, ['gatewayId' => $gateway->id, 'applePayDomainAssociation' => null]));
+        @unlink($secretFile);
+        @unlink($appleFile);
+        @unlink($outsideFile);
+    }
+
+    check('customers see payment messages, not internal ones', function() {
+        $general = Craft::$app->getConfig()->getGeneral();
+        $devMode = $general->devMode;
+        $general->devMode = false;
+
+        try {
+            $declined = \justinholtweb\coinpurse\helpers\Guard::customerMessage(new craft\commerce\errors\PaymentException('Your card was declined.'));
+            $internal = \justinholtweb\coinpurse\helpers\Guard::customerMessage(new RuntimeException('The Apple Pay merchant identity certificate at /secret/path.pem can’t be read.'));
+        } finally {
+            $general->devMode = $devMode;
+        }
+
+        return $declined === 'Your card was declined.' && !str_contains($internal, '/secret/path') ?: "$declined | $internal";
+    });
+
+    check('merchant validation is rate limited per address', function() use ($client) {
+        foreach (['127.0.0.1', '::1'] as $ip) {
+            Craft::$app->getCache()->delete(sprintf('coinpurse:rate:validate-merchant:%s:%d', sha1($ip), intdiv(time(), 60)));
+        }
+
+        $info = json_decode((string)$client->get('index.php?p=actions/users/session-info', ['headers' => ['Accept' => 'application/json']])->getBody(), true);
+        $limited = false;
+
+        for ($i = 0; $i < 25 && !$limited; $i++) {
+            $body = (string)$client->post('index.php?p=actions/coinpurse/apple-pay/validate-merchant', [
+                'headers' => ['Accept' => 'application/json'],
+                'form_params' => ['validationUrl' => 'https://example.com/not-apple', 'CRAFT_CSRF_TOKEN' => $info['csrfTokenValue'] ?? ''],
+            ])->getBody();
+            $limited = str_contains($body, 'Too many attempts');
+        }
+
+        foreach (['127.0.0.1', '::1'] as $ip) {
+            Craft::$app->getCache()->delete(sprintf('coinpurse:rate:validate-merchant:%s:%d', sha1($ip), intdiv(time(), 60)));
+        }
+
+        return $limited ?: 'no limit after 25 requests';
+    });
+
+    check('a non-admin with coinpurse-manage cannot save settings', function() use ($originalSettings) {
+        $password = 'cp-' . bin2hex(random_bytes(10));
+        $user = new craft\elements\User();
+        $user->username = 'coinpurse-check-' . bin2hex(random_bytes(3));
+        $user->email = $user->username . '@example.com';
+        $user->newPassword = $password;
+        Craft::$app->getElements()->saveElement($user, false);
+        Craft::$app->getUsers()->activateUser($user);
+        Craft::$app->getUserPermissions()->saveUserPermissions($user->id, ['accesscp', 'accessplugin-coinpurse', 'coinpurse-manage']);
+
+        try {
+            $http = new GuzzleHttp\Client(['base_uri' => 'http://localhost/', 'http_errors' => false, 'cookies' => true, 'allow_redirects' => false]);
+            $token = static fn() => json_decode((string)$http->get('index.php?p=actions/users/session-info', ['headers' => ['Accept' => 'application/json']])->getBody(), true)['csrfTokenValue'] ?? '';
+            $http->post('index.php?p=actions/users/login', [
+                'headers' => ['Accept' => 'application/json'],
+                'form_params' => ['loginName' => $user->username, 'password' => $password, 'CRAFT_CSRF_TOKEN' => $token()],
+            ]);
+            $status = $http->post('index.php?p=admin/actions/coinpurse/settings/save', [
+                'form_params' => ['settings' => ['applePayDomainAssociation' => '$CRAFT_SECURITY_KEY'], 'CRAFT_CSRF_TOKEN' => $token()],
+            ])->getStatusCode();
+
+            $stored = Craft::$app->getProjectConfig()->get('plugins.coinpurse.settings.applePayDomainAssociation', true);
+
+            return $status === 403 && $stored !== '$CRAFT_SECURITY_KEY' ?: "status $status, stored " . var_export($stored, true);
+        } finally {
+            Craft::$app->getElements()->deleteElement($user, true);
+        }
+    });
+
     check('the Twig tag renders a mountable button', function() use ($client, $variantA, $originalSettings, $gateway, &$fixtureTemplate) {
         applySettings(array_merge($originalSettings, [
             'gatewayId' => $gateway->id,

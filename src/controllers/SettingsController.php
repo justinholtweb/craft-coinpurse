@@ -6,7 +6,6 @@ use Craft;
 use craft\commerce\Plugin as Commerce;
 use craft\web\Controller;
 use justinholtweb\coinpurse\Plugin;
-use yii\web\ForbiddenHttpException;
 use yii\web\Response;
 
 /**
@@ -42,7 +41,7 @@ class SettingsController extends Controller
             'gatewayOptions' => $this->gatewayOptions(),
             'driverOptions' => $plugin->getDrivers()->getDriverOptions(),
             'commerceReady' => Plugin::commerceIsReady(),
-            'readOnly' => !Craft::$app->getConfig()->getGeneral()->allowAdminChanges,
+            'readOnly' => !Craft::$app->getConfig()->getGeneral()->allowAdminChanges || !Craft::$app->getUser()->getIsAdmin(),
         ]);
     }
 
@@ -50,9 +49,10 @@ class SettingsController extends Controller
     {
         $this->requirePostRequest();
 
-        if (!Craft::$app->getConfig()->getGeneral()->allowAdminChanges) {
-            throw new ForbiddenHttpException('Admin changes are disabled in this environment.');
-        }
+        // Settings are project config, and some of them decide what the site serves to anybody —
+        // the Apple Pay domain file is published verbatim at a public URL. So saving is admin work,
+        // and only where admin changes are allowed. `coinpurse-manage` still opens the screen.
+        $this->requireAdmin();
 
         $plugin = Plugin::getInstance();
         $posted = $this->request->getBodyParam('settings', []);

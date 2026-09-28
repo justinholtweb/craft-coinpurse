@@ -5,8 +5,10 @@ order: 20
 summary: Every setting, the Apple Pay and Google Pay setup for the direct driver, and overriding it all from a config file.
 ---
 
-Settings live at **Coin Purse → Settings**. Anything that holds a secret or differs between
-environments accepts an environment variable, written `$APPLE_PAY_MERCHANT_ID`.
+Settings live at **Coin Purse → Settings**. Only admins can save them, and only where
+`allowAdminChanges` is on; the `coinpurse-manage` permission opens the screen read-only. Anything
+that holds a secret or differs between environments accepts an environment variable, written
+`$APPLE_PAY_MERCHANT_ID`.
 
 ## Gateway and driver
 
@@ -62,11 +64,15 @@ Only needed when the gateway is not Stripe.
 | Certificate path | Your merchant identity certificate, as a PEM file |
 | Key path | Its private key, as a PEM file |
 | Key password | If the key has one |
-| Domain association | The contents of Apple's domain association file, or a path to it |
+| Domain association | The contents of Apple's domain association file, or a path to it inside your project |
 
 Coin Purse serves the domain association file at
 `/.well-known/apple-developer-merchantid-domain-association`, so there is nothing to upload to your
 web root. Register the domain in your Apple developer account once it is live.
+
+If you give a path rather than the file's contents, the file has to keep Apple's name
+(`apple-developer-merchantid-domain-association`) and sit inside your project. Anything else is not
+served, because whatever this setting points at is published to anybody who asks for that URL.
 
 Keep the certificate and key outside the web root and point to them with environment variables.
 

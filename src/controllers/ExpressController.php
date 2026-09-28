@@ -6,6 +6,7 @@ use Craft;
 use craft\commerce\elements\Order;
 use craft\web\Controller;
 use justinholtweb\coinpurse\helpers\Address;
+use justinholtweb\coinpurse\helpers\Guard;
 use justinholtweb\coinpurse\helpers\Signature;
 use justinholtweb\coinpurse\models\ButtonOptions;
 use justinholtweb\coinpurse\models\ExpressSession;
@@ -28,6 +29,8 @@ class ExpressController extends Controller
 {
     public array|bool|int $allowAnonymous = true;
 
+    private const STARTS_PER_MINUTE = 20;
+
     public function beforeAction($action): bool
     {
         if (!parent::beforeAction($action)) {
@@ -49,6 +52,12 @@ class ExpressController extends Controller
      */
     public function actionStart(): Response
     {
+        // Every start saves an order, and the signed payload that authorises it is in the page's
+        // HTML for anyone to replay. A person opens a wallet sheet a few times a minute at most.
+        if (!Guard::withinRateLimit('start', self::STARTS_PER_MINUTE)) {
+            return $this->failure(Craft::t('coinpurse', 'Too many attempts. Wait a minute and try again.'));
+        }
+
         $options = $this->requireSignedOptions();
 
         $drivers = Plugin::getInstance()->getDrivers();
@@ -204,7 +213,7 @@ class ExpressController extends Controller
                 'durationMs' => (int)((microtime(true) - $started) * 1000),
             ]);
 
-            return $this->failure($e->getMessage());
+            return $this->failure(Guard::customerMessage($e));
         }
 
         $payload = $driver->getPaymentResult(
@@ -248,7 +257,7 @@ class ExpressController extends Controller
                 'message' => $e->getMessage(),
             ]);
 
-            return $this->failure($e->getMessage());
+            return $this->failure(Guard::customerMessage($e));
         }
 
         return $this->asJson([

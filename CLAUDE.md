@@ -127,7 +127,7 @@ No local PHP on this Mac. Everything runs inside the plugin-testing container:
 
 ```sh
 cd ~/Sites/plugin-testing
-ddev exec php /var/www/craft-coinpurse/tests/integration/checks.php    # 113 checks
+ddev exec php /var/www/craft-coinpurse/tests/integration/checks.php    # 120 checks
 ddev exec bash /var/www/craft-coinpurse/tests/integration/cp-smoke.sh  # CP screens render
 ddev exec bash -c 'find /var/www/craft-coinpurse/src -name "*.php" -print0 | xargs -0 -n1 php -l'
 node --check src/web/assets/express/dist/coinpurse.js

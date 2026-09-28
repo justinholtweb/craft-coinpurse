@@ -2,7 +2,9 @@
 
 namespace justinholtweb\coinpurse\controllers;
 
+use Craft;
 use craft\web\Controller;
+use justinholtweb\coinpurse\helpers\Guard;
 use justinholtweb\coinpurse\Plugin;
 use yii\web\NotFoundHttpException;
 use yii\web\Response;
@@ -38,12 +40,20 @@ class ApplePayController extends Controller
         $this->requirePostRequest();
         $this->requireAcceptsJson();
 
+        // Each call is an mTLS request to Apple from this server, so it is limited like start.
+        if (!Guard::withinRateLimit('validate-merchant', 20)) {
+            return $this->asJson(['success' => false, 'error' => Craft::t('coinpurse', 'Too many attempts. Wait a minute and try again.')]);
+        }
+
         $validationUrl = (string)$this->request->getBodyParam('validationUrl');
 
         try {
             $session = Plugin::getInstance()->getApplePay()->createMerchantSession($validationUrl);
         } catch (\Throwable $e) {
-            return $this->asJson(['success' => false, 'error' => $e->getMessage()]);
+            // The real reason is often a certificate path or an upstream URL: logged, not shown.
+            Craft::warning('Apple Pay merchant validation failed: ' . $e->getMessage(), __METHOD__);
+
+            return $this->asJson(['success' => false, 'error' => Guard::customerMessage($e)]);
         }
 
         return $this->asJson(['success' => true, 'merchantSession' => $session]);

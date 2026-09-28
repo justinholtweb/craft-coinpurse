@@ -125,7 +125,7 @@ return [
     'Only needed when Coin Purse speaks Apple Pay itself. On Stripe, Stripe hosts the domain verification and holds the certificate.' => 'Only needed when Coin Purse speaks Apple Pay itself. On Stripe, Stripe hosts the domain verification and holds the certificate.',
     'Order' => 'Order',
     'Pass' => 'Pass',
-    'Paste the file Apple gives you, or the absolute path to it. Coin Purse serves it at `/.well-known/apple-developer-merchantid-domain-association`.' => 'Paste the file Apple gives you, or the absolute path to it. Coin Purse serves it at `/.well-known/apple-developer-merchantid-domain-association`.',
+    'Paste the file Apple gives you, or the absolute path to it inside your project, keeping Apple’s filename. Coin Purse serves it at `/.well-known/apple-developer-merchantid-domain-association`.' => 'Paste the file Apple gives you, or the absolute path to it inside your project, keeping Apple’s filename. Coin Purse serves it at `/.well-known/apple-developer-merchantid-domain-association`.',
     'Pay' => 'Pay',
     'PayPal' => 'PayPal',
     'Payloads contain customer addresses and contact details. Off by default for that reason.' => 'Payloads contain customer addresses and contact details. Off by default for that reason.',
@@ -202,4 +202,7 @@ return [
     '{count} log entries deleted.' => '{count} log entries deleted.',
     '{name} ({class}).' => '{name} ({class}).',
     '“Automatic” prefers Stripe’s own Express Checkout Element when the gateway is Stripe, and falls back to speaking Apple Pay and Google Pay directly for everything else.' => '“Automatic” prefers Stripe’s own Express Checkout Element when the gateway is Stripe, and falls back to speaking Apple Pay and Google Pay directly for everything else.',
+    'Too many attempts. Wait a minute and try again.' => 'Too many attempts. Wait a minute and try again.',
+    'Something went wrong. Nothing has been charged — please try again.' => 'Something went wrong. Nothing has been charged — please try again.',
+    'Only admins can change these settings, because they live in project config and some of them are served publicly.' => 'Only admins can change these settings, because they live in project config and some of them are served publicly.',
 ];
