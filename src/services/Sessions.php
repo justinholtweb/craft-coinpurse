@@ -202,14 +202,15 @@ class Sessions extends Component
     /**
      * Whether an order was placed through express checkout.
      *
-     * Session rows are pruned, so a false answer for an old order means "no record", not "no".
-     * Anything that must survive belongs on the order itself.
+     * Answered from the permanent record in `ExpressOrders`, which outlives the session rows. An
+     * express order completed before the record existed, whose session was already purged, has none.
      */
     public function wasExpressOrder(int $orderId): bool
     {
-        return SessionRecord::find()
-            ->where(['orderId' => $orderId, 'state' => ExpressSession::STATE_PAID])
-            ->exists();
+        return Plugin::getInstance()->getExpressOrders()->isExpress($orderId)
+            || SessionRecord::find()
+                ->where(['orderId' => $orderId, 'state' => ExpressSession::STATE_PAID])
+                ->exists();
     }
 
     /**

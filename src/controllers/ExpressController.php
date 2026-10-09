@@ -184,6 +184,10 @@ class ExpressController extends Controller
             return $this->failure(Craft::t('coinpurse', 'An email address is needed to place this order.'));
         }
 
+        // Which wallet the customer chose. A label for the order index, nothing more: it is never
+        // used to price, discount or authorise anything.
+        Plugin::getInstance()->getExpressOrders()->rememberWallet($session, $this->request->getBodyParam('wallet'));
+
         $started = microtime(true);
 
         try {

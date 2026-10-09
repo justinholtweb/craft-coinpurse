@@ -1,5 +1,24 @@
 # Release Notes for Coin Purse
 
+## Unreleased
+
+### Added
+
+- An **Express checkout** column for Commerce → Orders, showing the wallet each express order was
+  paid with (Apple Pay, Google Pay, or Link, PayPal, Amazon Pay and Klarna through Stripe).
+- An **Express checkout** condition rule for order conditions — *Any wallet*, a specific wallet, or
+  *Not express checkout* — so staff can filter the orders index or build a custom source of wallet
+  orders. It is kept off discount, shipping and gateway conditions on purpose: the wallet is only
+  known once the customer authorises the payment, after the sheet has shown its total.
+- `craft.coinpurse.wallet(order)` and `craft.coinpurse.walletLabel(order)`.
+
+### Changed
+
+- Completed express orders are now recorded permanently, with their wallet. `wasExpress(order)`
+  used to answer from session rows, which are purged within hours, so it said "no" for almost every
+  order older than a day. Paid sessions still on disk are carried over by the migration, with the
+  wallet unknown.
+
 ## 5.0.1
 
 ### Security

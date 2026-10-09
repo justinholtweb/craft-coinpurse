@@ -3,19 +3,35 @@
 namespace justinholtweb\coinpurse;
 
 use Craft;
+use craft\base\conditions\BaseCondition;
+use craft\base\Element;
 use craft\base\Model;
+use craft\commerce\elements\conditions\orders\DiscountOrderCondition;
+use craft\commerce\elements\conditions\orders\GatewayOrderCondition;
+use craft\commerce\elements\conditions\orders\OrderCondition;
+use craft\commerce\elements\conditions\orders\ShippingMethodOrderCondition;
+use craft\commerce\elements\conditions\orders\ShippingRuleOrderCondition;
+use craft\commerce\elements\Order;
+use craft\elements\db\ElementQuery;
+use craft\events\DefineAttributeHtmlEvent;
+use craft\events\ElementIndexTableAttributeEvent;
+use craft\events\PopulateElementsEvent;
+use craft\events\RegisterConditionRulesEvent;
+use craft\events\RegisterElementTableAttributesEvent;
 use craft\base\Plugin as BasePlugin;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
 use craft\services\UserPermissions;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
+use justinholtweb\coinpurse\conditions\ExpressCheckoutConditionRule;
 use justinholtweb\coinpurse\models\Settings;
 use justinholtweb\coinpurse\services\ApplePay;
 use justinholtweb\coinpurse\services\Buttons;
 use justinholtweb\coinpurse\services\Checkout;
 use justinholtweb\coinpurse\services\Diagnostics;
 use justinholtweb\coinpurse\services\Drivers;
+use justinholtweb\coinpurse\services\ExpressOrders;
 use justinholtweb\coinpurse\services\Log;
 use justinholtweb\coinpurse\services\Quotes;
 use justinholtweb\coinpurse\services\Sessions;
@@ -33,13 +49,17 @@ use yii\base\Event;
  * @property-read ApplePay $applePay
  * @property-read Diagnostics $diagnostics
  * @property-read Log $log
+ * @property-read ExpressOrders $expressOrders
  * @method Settings getSettings()
  */
 class Plugin extends BasePlugin
 {
     public const HANDLE = 'coinpurse';
 
-    public string $schemaVersion = '5.0.0';
+    /** The order index column's key. */
+    public const TABLE_ATTRIBUTE = 'coinpurseWallet';
+
+    public string $schemaVersion = '5.1.0';
     public bool $hasCpSettings = true;
     public bool $hasCpSection = true;
 
@@ -55,6 +75,7 @@ class Plugin extends BasePlugin
                 'applePay' => ['class' => ApplePay::class],
                 'diagnostics' => ['class' => Diagnostics::class],
                 'log' => ['class' => Log::class],
+                'expressOrders' => ['class' => ExpressOrders::class],
             ],
         ];
     }
@@ -67,6 +88,7 @@ class Plugin extends BasePlugin
         $this->_registerPermissions();
         $this->_registerCpRoutes();
         $this->_registerSiteRoutes();
+        $this->_registerOrderIndex();
     }
 
     /**
@@ -132,6 +154,11 @@ class Plugin extends BasePlugin
     public function getLog(): Log
     {
         return $this->get('log');
+    }
+
+    public function getExpressOrders(): ExpressOrders
+    {
+        return $this->get('expressOrders');
     }
 
     public function getSettingsResponse(): mixed
@@ -246,6 +273,82 @@ class Plugin extends BasePlugin
                 $event->rules['coinpurse/settings'] = 'coinpurse/settings/index';
                 $event->rules['coinpurse/log'] = 'coinpurse/log/index';
                 $event->rules['coinpurse/log/<id:\d+>'] = 'coinpurse/log/detail';
+            }
+        );
+    }
+
+    /**
+     * Commerce → Orders: an "Express checkout" column and condition rule.
+     *
+     * The rule is kept off discount, shipping and gateway conditions — see the rule's docblock.
+     */
+    private function _registerOrderIndex(): void
+    {
+        if (!class_exists(Order::class)) {
+            return;
+        }
+
+        Event::on(
+            OrderCondition::class,
+            BaseCondition::EVENT_REGISTER_CONDITION_RULES,
+            static function(RegisterConditionRulesEvent $event) {
+                if (
+                    $event->sender instanceof DiscountOrderCondition
+                    || $event->sender instanceof ShippingMethodOrderCondition
+                    || $event->sender instanceof ShippingRuleOrderCondition
+                    || $event->sender instanceof GatewayOrderCondition
+                ) {
+                    return;
+                }
+
+                $event->conditionRules[] = ExpressCheckoutConditionRule::class;
+            }
+        );
+
+        Event::on(
+            Order::class,
+            Element::EVENT_REGISTER_TABLE_ATTRIBUTES,
+            static function(RegisterElementTableAttributesEvent $event) {
+                $event->tableAttributes[self::TABLE_ATTRIBUTE] = [
+                    'label' => Craft::t('coinpurse', 'Express checkout'),
+                ];
+            }
+        );
+
+        // One query per index page for the column, rather than one per row.
+        Event::on(
+            Order::class,
+            Element::EVENT_PREP_QUERY_FOR_TABLE_ATTRIBUTE,
+            function(ElementIndexTableAttributeEvent $event) {
+                if ($event->attribute !== self::TABLE_ATTRIBUTE) {
+                    return;
+                }
+
+                $event->query->on(
+                    ElementQuery::EVENT_AFTER_POPULATE_ELEMENTS,
+                    function(PopulateElementsEvent $populated) {
+                        $this->getExpressOrders()->prime(array_map(
+                            static fn($element) => (int)$element->id,
+                            array_filter($populated->elements, static fn($element) => $element instanceof Order)
+                        ));
+                    }
+                );
+                $event->handled = true;
+            }
+        );
+
+        Event::on(
+            Order::class,
+            Element::EVENT_DEFINE_ATTRIBUTE_HTML,
+            function(DefineAttributeHtmlEvent $event) {
+                if ($event->attribute !== self::TABLE_ATTRIBUTE) {
+                    return;
+                }
+
+                /** @var Order $order */
+                $order = $event->sender;
+                $event->html = $this->getExpressOrders()->tableAttributeHtml($order);
+                $event->handled = true;
             }
         );
     }

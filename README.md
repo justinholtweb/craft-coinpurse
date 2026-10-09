@@ -106,10 +106,32 @@ it is always safe to call.
 
 {{ craft.coinpurse.driver() }}          {# 'stripe' or 'raw' #}
 {{ craft.coinpurse.wasExpress(order) }} {# was this order placed through a wallet? #}
+{{ craft.coinpurse.wallet(order) }}      {# 'applePay', 'googlePay', … — or null #}
+{{ craft.coinpurse.walletLabel(order) }} {# 'Apple Pay', 'Google Pay', … — or null #}
 ```
 
 `isAvailable()` answers the server side of the question. Whether a *given customer's* device has a
 card in its wallet is only ever answerable in their browser.
+
+### Express orders in Commerce → Orders
+
+Every completed express order is recorded with the wallet it was paid with, and the record outlives
+Coin Purse's short-lived session rows. In **Commerce → Orders**:
+
+- **Express checkout column.** Pick it in the table's column settings; it shows "Apple Pay",
+  "Google Pay" (or Link, PayPal, Amazon Pay, Klarna through Stripe) and stays empty for ordinary
+  orders.
+- **Express checkout condition rule.** Filter the index, or build a custom source, by *Any wallet*,
+  a specific wallet, or *Not express checkout*.
+
+The rule is deliberately **not** offered on discount, shipping-method, shipping-rule or gateway
+conditions. Those are evaluated while the wallet sheet is still open, the wallet is only known once
+the customer authorises the payment, and Coin Purse refuses a charge whose total has moved since
+the sheet showed it — so "free shipping for Apple Pay orders" would fail every order it applied to.
+
+The wallet is what the customer's browser reported. It is a label for staff and is never used to
+price, discount or authorise anything. Express orders completed before the column existed are marked from any
+session rows still on disk, with the wallet unknown; older ones can't be recovered.
 
 ### From JavaScript
 

@@ -73,6 +73,19 @@ Stripe has superseded it.
   snapshots its address / shipping method / email into the session row first. `Sessions::restore()`
   puts them back on cancel, failure or expiry. Web Payments left the wallet's address on the cart.
 
+### Express-order record
+
+`services\ExpressOrders` writes one `coinpurse_orders` row per completed express order, from
+`Checkout::markPaid()` (idempotent, and run even when the session is already paid). Session rows
+are purged within hours; this table is what `wasExpress()`, the **Express checkout** order-index
+column (`Plugin::TABLE_ATTRIBUTE`) and `conditions\ExpressCheckoutConditionRule` read. The wallet is
+reported by the browser at `express/pay` (`wallet`: Coin Purse handle or Stripe's
+`expressPaymentType`), normalised to a known handle or dropped, and noted on the session row until
+completion. It is a staff label only — never used to price or authorise anything. The rule is
+**not** registered on Discount/ShippingMethod/ShippingRule/Gateway order conditions: those run
+while the sheet is open, before the wallet is known, and a total that moves at authorisation is
+refused by invariant 1.
+
 ### Security model
 
 The express endpoints are anonymous by necessity. What stands in for authentication:
@@ -128,6 +141,7 @@ No local PHP on this Mac. Everything runs inside the plugin-testing container:
 ```sh
 cd ~/Sites/plugin-testing
 ddev exec php /var/www/craft-coinpurse/tests/integration/checks.php    # 120 checks
+ddev exec php /var/www/craft-coinpurse/tests/integration/express-orders.php  # wallet record, column, rule
 ddev exec bash /var/www/craft-coinpurse/tests/integration/cp-smoke.sh  # CP screens render
 ddev exec bash -c 'find /var/www/craft-coinpurse/src -name "*.php" -print0 | xargs -0 -n1 php -l'
 node --check src/web/assets/express/dist/coinpurse.js

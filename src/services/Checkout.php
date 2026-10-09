@@ -237,6 +237,10 @@ class Checkout extends Component
 
     private function markPaid(ExpressSession $session, Order $order): void
     {
+        // Before the early return: a session marked paid by an older version, or by a request that
+        // died between the two writes, still gets its permanent record. `record()` is idempotent.
+        Plugin::getInstance()->getExpressOrders()->record($session, $order);
+
         if ($session->isPaid()) {
             return;
         }

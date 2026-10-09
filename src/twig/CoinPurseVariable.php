@@ -72,4 +72,32 @@ class CoinPurseVariable extends Behavior
 
         return Plugin::getInstance()->getSessions()->wasExpressOrder($order->id);
     }
+
+    /**
+     * The wallet an order was paid with — `applePay`, `googlePay`, `link`, `paypal`, `amazonPay`,
+     * `klarna`, or `unknown` for an express order from before wallets were recorded — or null if it
+     * wasn't an express order.
+     *
+     * ```twig
+     * {% if craft.coinpurse.wallet(order) == 'applePay' %}Paid with Apple Pay{% endif %}
+     * ```
+     */
+    public function wallet(Order $order): ?string
+    {
+        if (!$order->id) {
+            return null;
+        }
+
+        return Plugin::getInstance()->getExpressOrders()->walletFor($order->id);
+    }
+
+    /**
+     * The wallet's display name ("Apple Pay"), or null if the order wasn't an express order.
+     */
+    public function walletLabel(Order $order): ?string
+    {
+        $wallet = $this->wallet($order);
+
+        return $wallet !== null ? Plugin::getInstance()->getExpressOrders()->walletLabel($wallet) : null;
+    }
 }

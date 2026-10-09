@@ -370,6 +370,8 @@
                         : null,
                     shippingOption: event.shippingRate ? event.shippingRate.id : null,
                     expectedTotal: self.quote.total,
+                    // `apple_pay`, `google_pay`, `link`… — recorded for the order index only.
+                    wallet: event.expressPaymentType || null,
                     payment: {}
                 });
             })
@@ -572,6 +574,7 @@
                 billingAddress: { source: 'applePay', address: billing },
                 shippingOption: null,
                 expectedTotal: self.quote.total,
+                wallet: 'applePay',
                 payment: { token: payment.token }
             })
                 .then(function (data) {
@@ -805,6 +808,7 @@
             billingAddress: { source: 'googlePay', address: billing },
             shippingOption: paymentData.shippingOptionData ? paymentData.shippingOptionData.id : null,
             expectedTotal: this.quote.total,
+            wallet: 'googlePay',
             payment: { token: paymentData.paymentMethodData.tokenizationData.token }
         })
             .then(function (data) {

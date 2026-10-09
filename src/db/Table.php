@@ -9,4 +9,5 @@ abstract class Table
 {
     public const SESSIONS = '{{%coinpurse_sessions}}';
     public const LOG = '{{%coinpurse_log}}';
+    public const EXPRESS_ORDERS = '{{%coinpurse_orders}}';
 }
