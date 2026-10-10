@@ -1,7 +1,6 @@
 # Release Notes for Coin Purse
 
-## Unreleased
-
+## 5.1.0 - 2026-10-10
 ### Added
 
 - An **Express checkout** column for Commerce → Orders, showing the wallet each express order was
