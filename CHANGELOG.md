@@ -19,6 +19,20 @@
   order older than a day. Paid sessions still on disk are carried over by the migration, with the
   wallet unknown.
 
+## 5.0.2
+
+Not released on its own; these changes ship in 5.1.0.
+
+### Changed
+
+- `coinpurse/sessions/purge` now deletes the unpaid order behind each abandoned buy-now (`items`
+  mode) session along with the session row. Those orders were never a customer's cart, and a
+  button's public payload could be replayed to create them; they used to stay until Commerce's
+  incomplete-cart purge, three months by default. Carts, completed orders and orders with any
+  transaction against them are never deleted.
+- Craft's garbage collection now runs `coinpurse/sessions/reap` and `coinpurse/sessions/purge`, so an
+  install without a scheduled task still cleans up. Scheduling them remains the recommended setup.
+
 ## 5.0.1
 
 ### Security

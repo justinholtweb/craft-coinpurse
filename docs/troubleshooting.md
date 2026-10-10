@@ -70,4 +70,12 @@ token and enter it under **Token field**, with the right **Token encoding**.
 ## A customer's cart kept the wallet's address
 
 A sheet abandoned by closing the tab never sends a cancel. Schedule `coinpurse/sessions/reap`,
-which restores the snapshot for any session that expired without finishing.
+which restores the snapshot for any session that expired without finishing. Craft's garbage
+collection runs it too, but only occasionally.
+
+## Unpaid orders are piling up
+
+Each buy-now button that is opened and abandoned leaves an unpaid order, and a button's payload is
+public, so a script replaying it leaves many (Coin Purse rate-limits it per address). Schedule
+`coinpurse/sessions/purge`, which deletes them with their sessions; until 5.0.2 they stayed until
+Commerce's own incomplete-cart purge, which by default waits three months.

@@ -21,6 +21,7 @@ use craft\events\RegisterElementTableAttributesEvent;
 use craft\base\Plugin as BasePlugin;
 use craft\events\RegisterUrlRulesEvent;
 use craft\events\RegisterUserPermissionsEvent;
+use craft\services\Gc;
 use craft\services\UserPermissions;
 use craft\web\twig\variables\CraftVariable;
 use craft\web\UrlManager;
@@ -89,6 +90,7 @@ class Plugin extends BasePlugin
         $this->_registerCpRoutes();
         $this->_registerSiteRoutes();
         $this->_registerOrderIndex();
+        $this->_registerGarbageCollection();
     }
 
     /**
@@ -365,5 +367,34 @@ class Plugin extends BasePlugin
                 $event->rules[ApplePay::DOMAIN_ASSOCIATION_PATH] = 'coinpurse/apple-pay/domain-association';
             }
         );
+    }
+
+    /**
+     * Housekeeping that should not depend on a cron job somebody forgot to add.
+     *
+     * The console commands are still the reliable way — Craft's GC runs on a small fraction of
+     * requests, or with `php craft gc` — but this means an unscheduled install stops accumulating
+     * abandoned sessions and the detached orders behind replayed buy-now buttons.
+     */
+    private function _registerGarbageCollection(): void
+    {
+        Event::on(Gc::class, Gc::EVENT_RUN, [$this, 'collectGarbage']);
+    }
+
+    /**
+     * @internal Craft's GC handler; public only so it can be registered and tested by name.
+     */
+    public function collectGarbage(): void
+    {
+        if (!self::commerceIsReady()) {
+            return;
+        }
+
+        try {
+            $this->getSessions()->reapAbandoned();
+            $this->getSessions()->purge();
+        } catch (\Throwable $e) {
+            Craft::warning('Coin Purse could not clean up express sessions: ' . $e->getMessage(), 'coinpurse');
+        }
     }
 }

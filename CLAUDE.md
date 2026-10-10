@@ -129,6 +129,14 @@ The express endpoints are anonymous by necessity. What stands in for authenticat
   one. The JS fetches it from `users/session-info` on first use.
 - **`(int)($amount * 100)` turns 8.30 into 829** on a great many builds. `helpers\Money` exists for
   that reason alone.
+- **Commerce completes an order on any successful *or processing* transaction**, even for a
+  cent of the total (`Transactions::saveTransaction()` → `updateOrderPaidInformation()` /
+  `markAsComplete()`). An incomplete order can only carry pending, redirect or failed
+  transactions, so a fixture for "an unpaid order with a payment in flight" must use `redirect`.
+- **Never trigger `Gc::EVENT_RUN` in a test.** It runs every plugin's GC in the shared harness
+  (Commerce's cart purge, Formie's retention…). Call `Plugin::collectGarbage()` instead.
+- **The rate-limit counter is per clock minute.** A check that straddles the minute starts a fresh
+  count and is never refused; the check waits for room in the minute first.
 
 See `[[craft-plugin-gotchas]]` in the shared memory for family-wide traps, and
 `[[project_craft_shipper]]` / `[[project_craft_freeride]]` for the sibling Commerce plugins whose
@@ -140,7 +148,7 @@ No local PHP on this Mac. Everything runs inside the plugin-testing container:
 
 ```sh
 cd ~/Sites/plugin-testing
-ddev exec php /var/www/craft-coinpurse/tests/integration/checks.php    # 120 checks
+ddev exec php /var/www/craft-coinpurse/tests/integration/checks.php    # 123 checks
 ddev exec php /var/www/craft-coinpurse/tests/integration/express-orders.php  # wallet record, column, rule
 ddev exec bash /var/www/craft-coinpurse/tests/integration/cp-smoke.sh  # CP screens render
 ddev exec bash -c 'find /var/www/craft-coinpurse/src -name "*.php" -print0 | xargs -0 -n1 php -l'

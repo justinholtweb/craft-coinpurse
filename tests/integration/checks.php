@@ -22,6 +22,7 @@ require $root . '/bootstrap.php';
 $app = require CRAFT_VENDOR_PATH . '/craftcms/cms/bootstrap/console.php';
 
 use craft\commerce\elements\Order;
+use craft\helpers\Db;
 use craft\commerce\elements\Product;
 use craft\commerce\elements\Variant;
 use craft\commerce\gateways\Dummy;
@@ -723,6 +724,109 @@ try {
     });
 
     // -----------------------------------------------------------------
+    section('Housekeeping');
+
+    // An old session, the way a replayed buy-now button leaves one behind.
+    $agedSession = static function(array $items, ?string $state = null) use ($sessions, &$createdOrders): ExpressSession {
+        $s = $sessions->open(signedOptions(['items' => $items]), 'raw');
+
+        if ($s->getOrder()) {
+            $createdOrders[] = $s->getOrder();
+        }
+
+        if ($state !== null) {
+            $sessions->setState($s, $state);
+        }
+
+        Craft::$app->getDb()->createCommand()->update(Table::SESSIONS, [
+            'dateCreated' => Db::prepareDateForDb(new DateTime('-2 days')),
+        ], ['id' => $s->id])->execute();
+
+        return $s;
+    };
+
+    $orderExists = static fn(?int $id) => $id !== null && Order::find()->id($id)->status(null)->isCompleted(null)->exists();
+
+    check('purge deletes an abandoned buy-now session and its detached order', function() use ($agedSession, $sessions, $variantB, $orderExists) {
+        $s = $agedSession([['id' => $variantB->id, 'qty' => 1]], ExpressSession::STATE_CANCELLED);
+        $orderId = $s->orderId;
+        $sessions->purge();
+
+        return !$orderExists($orderId) && $sessions->getByUid($s->uid) === null
+            ?: 'order ' . ($orderExists($orderId) ? 'kept' : 'gone') . ', session ' . ($sessions->getByUid($s->uid) ? 'kept' : 'gone');
+    });
+
+    check('purge keeps a detached order that has a transaction against it', function() use ($agedSession, $sessions, $variantB, $orderExists, $gateway) {
+        $s = $agedSession([['id' => $variantB->id, 'qty' => 1]], ExpressSession::STATE_PAYING);
+        $order = $s->getOrder();
+        $order->gatewayId = $gateway->id;
+        Craft::$app->getElements()->saveElement($order, false);
+
+        // A payment still in flight: the customer is away at their bank's 3-D Secure page. Commerce
+        // completes an order on any successful or processing transaction, and purge skips completed
+        // orders anyway, so either of those would pass for the wrong reason.
+        $transactions = Commerce::getInstance()->getTransactions();
+        $transaction = $transactions->createTransaction($order, null, 'authorize');
+        $transaction->status = 'redirect';
+        $transactions->saveTransaction($transaction);
+
+        if (Order::find()->id($order->id)->isCompleted(true)->exists()) {
+            return 'the fixture order was completed, so this proves nothing';
+        }
+
+        $sessions->purge();
+
+        return $orderExists((int)$order->id) ?: 'an order with a payment in flight was deleted';
+    });
+
+    check('purge never deletes a cart', function() use ($sessions, $variantA, $orderExists, &$createdOrders) {
+        $order = new Order();
+        $order->storeId = Commerce::getInstance()->getStores()->getPrimaryStore()->id;
+        $order->orderSiteId = Craft::$app->getSites()->getPrimarySite()->id;
+        $order->number = Commerce::getInstance()->getCarts()->generateCartNumber();
+        Craft::$app->getElements()->saveElement($order, false);
+        $createdOrders[] = $order;
+
+        $s = new ExpressSession([
+            'mode' => ButtonOptions::MODE_CART,
+            'driver' => 'raw',
+            'state' => ExpressSession::STATE_CANCELLED,
+            'payloadHash' => 'test',
+            'payload' => [],
+        ]);
+        $s->setOrder($order);
+        $sessions->save($s);
+        Craft::$app->getDb()->createCommand()->update(Table::SESSIONS, [
+            'dateCreated' => Db::prepareDateForDb(new DateTime('-2 days')),
+        ], ['id' => $s->id])->execute();
+
+        $sessions->purge();
+
+        return $orderExists((int)$order->id) ?: 'a customer’s cart was deleted';
+    });
+
+    check('Craft’s garbage collection runs the cleanup', function() use ($agedSession, $variantB, $orderExists, $plugin) {
+        // Not by triggering the event: that would run every other plugin's GC in the shared
+        // harness too. Check the handler is registered, then call it.
+        $events = (new ReflectionProperty(\yii\base\Event::class, '_events'))->getValue();
+        $registered = false;
+
+        foreach ($events[\craft\services\Gc::EVENT_RUN][\craft\services\Gc::class] ?? [] as [$handler]) {
+            $registered = $registered || $handler === [$plugin, 'collectGarbage'];
+        }
+
+        if (!$registered) {
+            return 'no GC handler registered';
+        }
+
+        $s = $agedSession([['id' => $variantB->id, 'qty' => 1]]);
+        $orderId = $s->orderId;
+        $plugin->collectGarbage();
+
+        return !$orderExists($orderId) ?: 'the open, abandoned session’s order survived GC';
+    });
+
+    // -----------------------------------------------------------------
     section('Quotes');
 
     $quotes = $plugin->getQuotes();
@@ -1325,6 +1429,13 @@ try {
     });
 
     check('merchant validation is rate limited per address', function() use ($client) {
+        // The limit counts per clock minute, and reaching it takes several seconds of requests. A
+        // run that straddles the minute starts a fresh count and is never refused, so start with
+        // time to spare.
+        if ((int)date('s') > 35) {
+            sleep(61 - (int)date('s'));
+        }
+
         foreach (['127.0.0.1', '::1'] as $ip) {
             Craft::$app->getCache()->delete(sprintf('coinpurse:rate:validate-merchant:%s:%d', sha1($ip), intdiv(time(), 60)));
         }

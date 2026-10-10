@@ -162,7 +162,7 @@ class Sessions extends Component
     {
         if ($session->mode !== ButtonOptions::MODE_CART) {
             // A detached order has nothing to restore: it was never the customer's cart, and
-            // Commerce's own incomplete-cart purging will collect it.
+            // purge() deletes it once the session is old enough.
             return;
         }
 
@@ -215,15 +215,44 @@ class Sessions extends Component
 
     /**
      * Delete finished and stale session rows. Returns the number deleted.
+     *
+     * An unpaid buy-now session's detached order goes with it. That order was never anyone's cart
+     * and nothing else points at it, and `express/start` is anonymous: without this, every replay of
+     * a button's public payload would leave an order behind until Commerce's incomplete-cart purge,
+     * which by default waits three months.
      */
     public function purge(?int $minutes = null): int
     {
         $minutes = $minutes ?? max(60, Plugin::getInstance()->getSettings()->sessionLifetimeMinutes * 4);
-        $cutoff = (new DateTime())->modify("-{$minutes} minutes");
+        $cutoff = Db::prepareDateForDb((new DateTime())->modify("-{$minutes} minutes"));
+
+        if (Plugin::commerceIsReady()) {
+            $orderIds = SessionRecord::find()
+                ->select(['orderId'])
+                ->where(['mode' => ButtonOptions::MODE_ITEMS])
+                ->andWhere(['not', ['state' => ExpressSession::STATE_PAID]])
+                ->andWhere(['not', ['orderId' => null]])
+                ->andWhere(['<', 'dateCreated', $cutoff])
+                ->column();
+
+            if ($orderIds !== []) {
+                $orders = Order::find()->id($orderIds)->isCompleted(false)->status(null)->all();
+
+                foreach ($orders as $order) {
+                    // A session that died mid-payment can still have a transaction in flight against
+                    // its order (a 3-D Secure redirect, say). That is a record of money, and it stays.
+                    if (Commerce::getInstance()->getTransactions()->getAllTransactionsByOrderId((int)$order->id) !== []) {
+                        continue;
+                    }
+
+                    Craft::$app->getElements()->deleteElement($order, true);
+                }
+            }
+        }
 
         return (int)Craft::$app->getDb()->createCommand()->delete(Table::SESSIONS, [
             'and',
-            ['<', 'dateCreated', Db::prepareDateForDb($cutoff)],
+            ['<', 'dateCreated', $cutoff],
         ])->execute();
     }
 

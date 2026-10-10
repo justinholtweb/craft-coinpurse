@@ -80,12 +80,18 @@ See [Usage](usage) for every option.
 
 ## Scheduled tasks
 
-Two commands are worth putting on a schedule:
+Three commands are worth putting on a schedule:
 
 ```sh
 php craft coinpurse/sessions/reap    # every 15 minutes or so
+php craft coinpurse/sessions/purge   # daily
 php craft coinpurse/log/prune        # daily
 ```
 
 `reap` restores carts left addressed by wallet sheets that were abandoned by closing the tab, which
-never sends a cancel. See [Usage](usage#the-cart-and-abandoned-sheets).
+never sends a cancel. See [Usage](usage#the-cart-and-abandoned-sheets). `purge` deletes old session
+rows, along with the unpaid order behind each abandoned buy-now button.
+
+Craft's garbage collection also runs `reap` and `purge`, so an install without a schedule still
+cleans up — but only as often as GC runs, which is a small fraction of requests (or `php craft gc`).
+A schedule is what keeps abandoned carts from holding a wallet's address for long.

@@ -1,7 +1,7 @@
 {
     "name": "justinholtweb/craft-coinpurse",
     "description": "Apple Pay and Google Pay express checkout for Craft Commerce \u2014 a one-tap wallet button on any product, cart or checkout page.",
-    "version": "5.0.1",
+    "version": "5.0.2",
     "type": "craft-plugin",
     "keywords": [
         "craftcms",

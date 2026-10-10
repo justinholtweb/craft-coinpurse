@@ -55,7 +55,13 @@ shipping method and email, and puts them back if the sheet is cancelled, the pay
 session expires.
 
 A customer who closes the tab never sends a cancel, so run `coinpurse/sessions/reap` on a schedule
-to restore those carts too.
+to restore those carts too. (Craft's garbage collection runs it as well, but not often enough to
+rely on.)
+
+A buy-now (`items` mode) button builds its own order, so an abandoned one leaves an unpaid order
+behind. `coinpurse/sessions/purge` deletes those along with their session rows, once they are older
+than four session lifetimes (at least an hour). Carts are never deleted, nor is any order with a
+transaction against it, such as a payment waiting on a 3-D Secure redirect.
 
 ## Shipping inside the sheet
 
@@ -125,7 +131,7 @@ Render a new button, or use `cart` mode and change the cart.
 ```sh
 php craft coinpurse/diagnose         # why there is no button; exits non-zero if broken
 php craft coinpurse/sessions/reap    # restore carts left addressed by abandoned sheets
-php craft coinpurse/sessions/purge   # delete old session rows
+php craft coinpurse/sessions/purge   # delete old session rows and their unpaid buy-now orders
 php craft coinpurse/log/prune        # apply the log retention
 ```
 
