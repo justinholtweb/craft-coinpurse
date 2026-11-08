@@ -1,6 +1,6 @@
 # Release Notes for Coin Purse
 
-## Unreleased
+## 5.2.0 - 2026-11-08
 
 ### Added
 
