@@ -77,7 +77,7 @@ function buttonConfig(id, extra = {}) {
  * tries to fetch. `start` answers `express/start`; by default the server refuses, which keeps
  * third-party SDKs out of the picture unless a check asks for them.
  */
-function page({ readyState = 'complete', start = () => ({ success: false, error: 'refused in test' }) } = {}) {
+function page({ readyState = 'complete', start = () => ({ success: false, error: 'refused in test' }), href = '' } = {}) {
     const attached = [];
     const sent = [];
     const events = [];
@@ -134,7 +134,10 @@ function page({ readyState = 'complete', start = () => ({ success: false, error:
 
     const window = {
         document,
-        location: { href: '' },
+        location: { href },
+        // A real page URL brings the URL parser with it; the default stub has neither, which is the
+        // fail-closed fallback for engines without one.
+        ...(href ? { URL } : {}),
         console: { warn: (m) => warnings.push(String(m)), error: (m) => warnings.push(String(m)), log() {} },
         setTimeout,
         CustomEvent: class { constructor(type, init) { this.type = type; this.detail = init && init.detail; } },
@@ -352,6 +355,85 @@ await check('a javascript: redirect in an attribute is not followed', async () =
     CoinPurse.buttons['coinpurse-a'].finish({ number: 'n1', email: 'e' });
 
     return p.window.location.href === '' || `href=${p.window.location.href}`;
+});
+
+const evil = {
+    start: 'https://evil.test/collect', address: 'https://evil.test/collect', shipping: 'https://evil.test/collect',
+    pay: 'https://evil.test/collect', complete: 'https://evil.test/collect', cancel: 'https://evil.test/collect',
+    validateMerchant: 'https://evil.test/collect', sessionInfo: '/actions/users/session-info',
+};
+
+await check('a forged button pointing at another host sends nothing and is hidden', async () => {
+    const p = page({ href: 'https://shop.test/product' });
+    const el = p.addButton('coinpurse-x', buttonConfig('coinpurse-x', { endpoints: evil }));
+
+    inject(p).start();
+    await settle();
+
+    return p.sent.length === 0 && el.style.display === 'none'
+        || JSON.stringify(p.sent.map((r) => r.url));
+});
+
+await check('without a URL parser, protocol-relative and backslash endpoints are refused too', async () => {
+    for (const host of ['//evil.test/collect', '/\\evil.test/collect', ' \t//evil.test/collect']) {
+        const p = page();
+        p.addButton('coinpurse-x', buttonConfig('coinpurse-x', {
+            endpoints: { ...buttonConfig('x').endpoints, start: host },
+        }));
+
+        inject(p).start();
+        await settle();
+
+        if (p.sent.length !== 0) {
+            return `${JSON.stringify(host)} sent ${JSON.stringify(p.sent.map((r) => r.url))}`;
+        }
+    }
+
+    return true;
+});
+
+await check('absolute same-origin endpoints, as actionUrl() writes them, still work and carry the token', async () => {
+    const p = page({ href: 'https://shop.test/product' });
+    const absolute = {};
+    for (const [name, url] of Object.entries(buttonConfig('x').endpoints)) {
+        absolute[name] = 'https://shop.test' + url;
+    }
+    p.addButton('coinpurse-a', buttonConfig('coinpurse-a', { endpoints: absolute }));
+
+    inject(p).start();
+    await settle();
+
+    return p.starts().length === 1 && p.starts()[0].headers['X-CSRF-Token'] === 'csrf-from-session-info'
+        || JSON.stringify(p.sent);
+});
+
+await check('the CSRF token is never sent to another origin, even from the injected mount', async () => {
+    const p = page({ href: 'https://shop.test/product' });
+    p.addButton('coinpurse-a');
+
+    inject(p).mount(buttonConfig('coinpurse-a', { endpoints: evil }));
+    await settle();
+
+    return p.sent.every((r) => !r.url.includes('evil.test'))
+        || JSON.stringify(p.sent.map((r) => r.url));
+});
+
+await check('an attribute redirect is followed on this site and refused to another', async () => {
+    const results = [];
+
+    for (const redirect of ['https://shop.test/thanks/{number}', 'https://evil.test/{number}']) {
+        const p = page({ href: 'https://shop.test/product' });
+        p.addButton('coinpurse-a', buttonConfig('coinpurse-a', { onComplete: { redirect } }));
+
+        const CoinPurse = inject(p);
+        CoinPurse.start();
+        await settle();
+        CoinPurse.buttons['coinpurse-a'].finish({ number: 'n1', email: 'e' });
+        results.push(p.window.location.href);
+    }
+
+    return results[0] === 'https://shop.test/thanks/n1' && results[1] === 'https://shop.test/product'
+        || JSON.stringify(results);
 });
 
 console.log('\nThe injected path, unchanged');

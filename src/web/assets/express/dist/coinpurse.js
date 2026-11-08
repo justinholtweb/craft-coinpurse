@@ -86,6 +86,10 @@
             return Promise.resolve(csrfToken);
         }
 
+        if (!sameOrigin(endpoints.sessionInfo)) {
+            return Promise.resolve(null);
+        }
+
         return fetch(endpoints.sessionInfo, {
             headers: { Accept: 'application/json', 'X-Requested-With': 'XMLHttpRequest' },
             credentials: 'same-origin'
@@ -98,7 +102,42 @@
             .catch(function () { return null; });
     }
 
+    /**
+     * Whether a URL points at the page's own origin. The CSRF token, the signed payload and the
+     * wallet's answers only ever go to Craft — and every request here is `credentials:
+     * 'same-origin'`, so a cross-origin endpoint never had the session and could not have worked
+     * anyway. Without a URL parser only a path-relative URL can be proven local, so the answer
+     * fails closed.
+     */
+    function sameOrigin(url) {
+        if (typeof url !== 'string' || url === '') {
+            return false;
+        }
+
+        // Browsers ignore leading control characters and strip tabs and newlines anywhere, and
+        // treat a backslash like a slash — `/\evil.test` is protocol-relative by the time it is used.
+        var cleaned = url.replace(/^[\u0000- ]+/, '').replace(/[\t\n\r]/g, '');
+        var base = window.location && window.location.href;
+
+        if (typeof window.URL === 'function' && base) {
+            try {
+                var target = new window.URL(cleaned, base);
+                var page = new window.URL(base);
+
+                return target.protocol === page.protocol && target.host === page.host;
+            } catch (e) {
+                return false;
+            }
+        }
+
+        return /^\/(?![\/\\])/.test(cleaned);
+    }
+
     function post(endpoints, url, body) {
+        if (!sameOrigin(url)) {
+            return Promise.resolve({ success: false, error: 'Refused a request to another origin.' });
+        }
+
         return getCsrfToken(endpoints).then(function (token) {
             var headers = {
                 'Content-Type': 'application/json',
@@ -249,7 +288,7 @@
             }
         }
 
-        if (onComplete.redirect && (!this.declarative || isNavigable(onComplete.redirect))) {
+        if (onComplete.redirect && (!this.declarative || (isNavigable(onComplete.redirect) && sameOrigin(onComplete.redirect)))) {
             window.location.href = onComplete.redirect.replace('{number}', encodeURIComponent(result.number));
         }
     };
@@ -1029,6 +1068,22 @@
             }
 
             return null;
+        }
+
+        // Markup can be planted where a script cannot: a sanitiser that keeps `data-*` attributes
+        // would otherwise let a forged button point the CSRF token and the wallet at another host.
+        for (var name in config.endpoints) {
+            if (Object.prototype.hasOwnProperty.call(config.endpoints, name) && !sameOrigin(config.endpoints[name])) {
+                if (window.console && console.warn) {
+                    console.warn('[Coin Purse] Ignoring a button whose endpoints are not on this site.');
+                }
+
+                if (el.style) {
+                    el.style.display = 'none';
+                }
+
+                return null;
+            }
         }
 
         // The element is the source of truth for which element this config mounts into.

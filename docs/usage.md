@@ -171,7 +171,11 @@ attributes through, so the bundled runtime will not run JavaScript it finds in o
 
 - `onComplete.js` is not written into the attribute, and is ignored if present. Pass a function to
   `start({ onComplete })` or listen for `coinpurse:complete` instead. `onComplete.redirect` still
-  works, as long as it is a relative or `http(s)` URL.
+  works, as long as it stays on this site. Pass a function to redirect anywhere else.
+- Every endpoint must be on the page's own origin, or the button is hidden and nothing is sent. A
+  forged button cannot point the CSRF token, the signed payload or the wallet's answer at another
+  host. The runtime also never sends a request, or the token, to another origin from the injected
+  script; those requests never carried the session cookie, so they could not have worked anyway.
 - `js: 'window.payButton'` still hands you the button, but it is assigned as a name (`a.b.c`), not
   run as a statement.
 

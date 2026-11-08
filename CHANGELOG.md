@@ -1,5 +1,17 @@
 # Release Notes for Coin Purse
 
+## 5.2.1 - 2026-11-08
+
+### Security
+
+- A bundled button script no longer trusts the endpoints in a `data-coinpurse-config` attribute.
+  On a page that lets `data-*` attributes through from user content, a forged button could point
+  the button script at another host, which then received the visitor's CSRF token. Endpoints must
+  now be on the page's own origin, or the button is hidden and nothing is sent. The injected
+  script, which 5.2.0 did not expose, gains the same check: no request or token goes to another
+  origin. Only sites that turned off **Inject the button script** in 5.2.0 were affected.
+- A redirect read from an attribute is followed only within the same site.
+
 ## 5.2.0 - 2026-11-08
 
 ### Added
