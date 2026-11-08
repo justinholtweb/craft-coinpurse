@@ -23,7 +23,10 @@ it.
 ## Tech Stack
 
 - **PHP 8.2+**, **Craft CMS 5.3+**, **Craft Commerce 5.0+**, Yii2, Twig
-- No build step: `src/web/assets/express/dist/coinpurse.js` and `.css` are plain files
+- No build step: `src/web/assets/express/dist/coinpurse.js` and `.css` are plain files.
+  `coinpurse.js` is a classic ES5 script that sets `window.CoinPurse` *and* `module.exports`;
+  `coinpurse.mjs` is a three-line ES-module wrapper around it for sites that bundle it themselves
+  (`injectRuntime` off). Never duplicate the runtime into the wrapper
 - No vendored third-party code. Stripe.js and Google's `pay.js` must load from their own origins
   (Stripe requires it and SAQ-A depends on it), and are fetched on demand by whichever driver needs
   them — a Stripe store never loads Google's script
@@ -125,6 +128,12 @@ The express endpoints are anonymous by necessity. What stands in for authenticat
   customer sees. `ButtonOptions::PENDING_SHIPPING_OPTION` is the placeholder that keeps the sheet
   open for the one round trip it takes to price the first address; it is rejected server-side if it
   ever reaches a charge.
+- **A bundled runtime reads each button's config from `data-coinpurse-config`, and an attribute is
+  data, not code.** `Buttons::attributeConfig()` strips `onComplete.js`, and the runtime refuses it
+  there, evaluates `variable` only as a dotted name and follows only relative/http(s) redirects.
+  Sanitisers pass `data-*` through; anything else is a script gadget. The injected `mount()` call
+  keeps its old behaviour. Config is **per button**, not per page — a page can have several, and
+  Ajax can add more (`CoinPurse.start()` again mounts only the new ones).
 - **Craft's CSRF token cannot be baked into the button**, because a cached page would ship a stale
   one. The JS fetches it from `users/session-info` on first use.
 - **`(int)($amount * 100)` turns 8.30 into 829** on a great many builds. `helpers\Money` exists for
@@ -148,9 +157,10 @@ No local PHP on this Mac. Everything runs inside the plugin-testing container:
 
 ```sh
 cd ~/Sites/plugin-testing
-ddev exec php /var/www/craft-coinpurse/tests/integration/checks.php    # 123 checks
+ddev exec php /var/www/craft-coinpurse/tests/integration/checks.php    # 130 checks
 ddev exec php /var/www/craft-coinpurse/tests/integration/express-orders.php  # wallet record, column, rule
 ddev exec bash /var/www/craft-coinpurse/tests/integration/cp-smoke.sh  # CP screens render
+ddev exec node /var/www/craft-coinpurse/tests/integration/runtime.mjs  # coinpurse.js/.mjs against a stub DOM
 ddev exec bash -c 'find /var/www/craft-coinpurse/src -name "*.php" -print0 | xargs -0 -n1 php -l'
 node --check src/web/assets/express/dist/coinpurse.js
 ```

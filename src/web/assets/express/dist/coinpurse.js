@@ -11,9 +11,24 @@
  *
  * and the server owns every number in it. The browser never adds anything up; it renders the
  * `quote` it is given and hands back what the wallet said.
+ *
+ * Two ways in. Coin Purse injects this file and mounts each button with an inline
+ * `CoinPurse.mount({...})`; or, with “Inject the button script” off, a site bundles this file
+ * itself (or `coinpurse.mjs`, which wraps it) and calls `CoinPurse.start()`, which mounts every
+ * button from the `data-coinpurse-config` attribute on its markup.
  */
 (function () {
     'use strict';
+
+    // Loaded twice — injected by Coin Purse *and* bundled by the site — the first copy wins, so a
+    // button is only ever mounted once. A bundler still gets the live instance.
+    if (window.CoinPurse) {
+        if (typeof module === 'object' && module && module.exports) {
+            module.exports = window.CoinPurse;
+        }
+
+        return;
+    }
 
     var STRIPE_JS = 'https://js.stripe.com/v3/';
 
@@ -133,8 +148,14 @@
 
     // ---------------------------------------------------------------- The button
 
-    function Button(config) {
+    /**
+     * @param {Object} config
+     * @param {boolean} declarative True when the config came from a `data-coinpurse-config`
+     *     attribute. Attributes are data, never code: see `fromAttribute()`.
+     */
+    function Button(config, declarative) {
         this.config = config;
+        this.declarative = !!declarative;
         this.el = document.getElementById(config.id);
         this.session = null;
         this.quote = null;
@@ -203,7 +224,21 @@
 
         window.CoinPurse.lastOrder = cwp;
 
-        if (onComplete.js) {
+        emit(this.el, 'coinpurse:complete', { order: cwp, button: this });
+
+        if (typeof onComplete.callback === 'function') {
+            try {
+                onComplete.callback(cwp, this);
+            } catch (e) {
+                if (window.console && console.error) {
+                    console.error('[Coin Purse] onComplete threw', e);
+                }
+            }
+        }
+
+        // A string of JavaScript only ever runs from the injected call, which Craft wrote into a
+        // <script>. From an attribute it would be a script gadget.
+        if (onComplete.js && !this.declarative) {
             try {
                 /* eslint-disable no-new-func */
                 new Function('cwp', onComplete.js)(cwp);
@@ -214,7 +249,7 @@
             }
         }
 
-        if (onComplete.redirect) {
+        if (onComplete.redirect && (!this.declarative || isNavigable(onComplete.redirect))) {
             window.location.href = onComplete.redirect.replace('{number}', encodeURIComponent(result.number));
         }
     };
@@ -864,18 +899,207 @@
         return this.renew();
     };
 
-    // ---------------------------------------------------------------- Public API
+    // ---------------------------------------------------------------- Declarative buttons
 
-    var CoinPurse = {
-        buttons: {},
-        lastOrder: null,
+    var IDENTIFIER_PATH = /^[A-Za-z_$][\w$]*(\.[A-Za-z_$][\w$]*)*$/;
 
-        mount: function (config) {
-            var button = new Button(config);
+    /** Options passed to `CoinPurse.start()`, applied over every button it mounts. */
+    var startOptions = {};
+    var scanQueued = false;
 
-            this.buttons[config.id] = button;
+    function emit(el, name, detail) {
+        if (!el || typeof el.dispatchEvent !== 'function' || typeof window.CustomEvent !== 'function') {
+            return;
+        }
 
-            if (config.variable) {
+        try {
+            el.dispatchEvent(new window.CustomEvent(name, { bubbles: true, detail: detail }));
+        } catch (e) { /* An event nobody could construct is not worth failing a purchase over. */ }
+    }
+
+    /** A relative URL, or an absolute http(s) one — never `javascript:` and friends. */
+    function isNavigable(url) {
+        if (typeof url !== 'string') {
+            return false;
+        }
+
+        // Browsers ignore leading control characters and strip tabs and newlines anywhere in a
+        // URL, so `\tjava\nscript:` is still a script URL by the time it is followed.
+        var cleaned = url.replace(/^[\u0000-\u0020]+/, '').replace(/[\t\n\r]/g, '');
+        var scheme = /^([A-Za-z][A-Za-z0-9+.\-]*):/.exec(cleaned);
+
+        return !scheme || /^https?$/i.test(scheme[1]);
+    }
+
+    /** `window.payButton`, `app.checkout.button` — a name to assign to, never a statement. */
+    function assignPath(path, value) {
+        if (typeof path !== 'string' || !IDENTIFIER_PATH.test(path)) {
+            return false;
+        }
+
+        var parts = path.split('.');
+
+        if (parts[0] === 'window') {
+            parts.shift();
+        }
+
+        var target = window;
+
+        for (var i = 0; i < parts.length; i++) {
+            if (parts[i] === '__proto__' || parts[i] === 'prototype' || parts[i] === 'constructor') {
+                return false;
+            }
+
+            if (i === parts.length - 1) {
+                target[parts[i]] = value;
+                return true;
+            }
+
+            target = target[parts[i]];
+
+            if (!target || (typeof target !== 'object' && typeof target !== 'function')) {
+                return false;
+            }
+        }
+
+        return false;
+    }
+
+    function isPlainObject(value) {
+        return !!value && typeof value === 'object' && Object.prototype.toString.call(value) === '[object Object]';
+    }
+
+    /**
+     * `overrides` over `base`, one level deep for `style` and `onComplete`, so
+     * `start({ style: { theme: 'light' } })` keeps the height and `start({ onComplete: fn })`
+     * keeps the template's redirect.
+     */
+    function merge(base, overrides) {
+        var result = {};
+        var key;
+
+        for (key in base) {
+            if (Object.prototype.hasOwnProperty.call(base, key)) {
+                result[key] = base[key];
+            }
+        }
+
+        for (key in overrides || {}) {
+            if (!Object.prototype.hasOwnProperty.call(overrides, key) || key === 'id') {
+                continue;
+            }
+
+            var value = overrides[key];
+
+            if (key === 'onComplete' && typeof value === 'function') {
+                value = { callback: value };
+            }
+
+            if (isPlainObject(value) && isPlainObject(result[key])) {
+                result[key] = merge(result[key], value);
+            } else {
+                result[key] = value;
+            }
+        }
+
+        return result;
+    }
+
+    /**
+     * Read a button's `data-coinpurse-config`. Malformed JSON is ignored, not thrown, and the
+     * button is hidden rather than left as an empty box: the same thing a button the server
+     * refuses does.
+     */
+    function fromAttribute(el) {
+        var config;
+
+        try {
+            config = JSON.parse(el.getAttribute('data-coinpurse-config'));
+        } catch (e) {
+            config = null;
+        }
+
+        if (!isPlainObject(config) || typeof config.payload !== 'string' || !isPlainObject(config.endpoints)) {
+            if (window.console && console.warn) {
+                console.warn('[Coin Purse] Ignoring a button with an unreadable data-coinpurse-config.');
+            }
+
+            if (el.style) {
+                el.style.display = 'none';
+            }
+
+            return null;
+        }
+
+        // The element is the source of truth for which element this config mounts into.
+        if (el.id) {
+            config.id = el.id;
+        } else if (typeof config.id === 'string' && config.id) {
+            el.id = config.id;
+        } else {
+            return null;
+        }
+
+        // Data, not code: Coin Purse never writes `onComplete.js` into an attribute, and this
+        // refuses one somebody else did.
+        if (isPlainObject(config.onComplete) && config.onComplete.js) {
+            config.onComplete = merge(config.onComplete, {});
+            delete config.onComplete.js;
+        }
+
+        return config;
+    }
+
+    function scan() {
+        scanQueued = false;
+
+        var nodes = document.querySelectorAll('[data-coinpurse-config]');
+
+        for (var i = 0; i < nodes.length; i++) {
+            var config = fromAttribute(nodes[i]);
+
+            if (config) {
+                mountConfig(merge(config, startOptions), true);
+            }
+        }
+    }
+
+    /**
+     * The one path into a mounted button. Idempotent per element, so the injected call and a
+     * bundled `start()` on the same page — or `start()` called again after new buttons arrive —
+     * never mount a button twice.
+     */
+    function mountConfig(config, declarative) {
+        if (!config || typeof config.id !== 'string' || !config.id) {
+            return null;
+        }
+
+        var existing = CoinPurse.buttons[config.id];
+
+        if (existing && existing.el) {
+            return existing;
+        }
+
+        if (!document.getElementById(config.id)) {
+            // A runtime that runs ahead of the markup (in <head>, say) waits for it rather than
+            // registering a button with nowhere to draw — which would also block the real mount.
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', function () { mountConfig(config, declarative); });
+            }
+
+            return null;
+        }
+
+        var button = new Button(config, declarative);
+
+        CoinPurse.buttons[config.id] = button;
+
+        if (config.variable) {
+            if (declarative) {
+                if (!assignPath(config.variable, button) && window.console && console.warn) {
+                    console.warn('[Coin Purse] Could not assign to ' + config.variable);
+                }
+            } else {
                 // `js: 'window.payButton'` in the template hands the caller a handle on this
                 // button, the same way the plugin this replaces did.
                 try {
@@ -887,12 +1111,54 @@
                     }
                 }
             }
+        }
 
-            button.start();
+        button.start();
 
-            return button;
+        return button;
+    }
+
+    // ---------------------------------------------------------------- Public API
+
+    var CoinPurse = {
+        buttons: {},
+        lastOrder: null,
+
+        /** Mount one button from a full config. This is what the injected inline call uses. */
+        mount: function (config) {
+            return mountConfig(config, false);
+        },
+
+        /**
+         * Mount every button on the page from its `data-coinpurse-config`, for a site that bundles
+         * this file itself. Safe to call before the markup exists (it waits for the document) and
+         * again after more buttons arrive (it mounts only the new ones). Options passed here —
+         * `onComplete: function (order, button) {}`, `style`, `variable` — apply over each
+         * button's own config.
+         */
+        start: function (options) {
+            if (isPlainObject(options)) {
+                startOptions = merge(startOptions, options);
+            }
+
+            if (document.readyState === 'loading') {
+                if (!scanQueued) {
+                    scanQueued = true;
+                    document.addEventListener('DOMContentLoaded', scan);
+                }
+
+                return;
+            }
+
+            scan();
         }
     };
 
     window.CoinPurse = CoinPurse;
+
+    // For a site that bundles the runtime: a CommonJS bundler gets the same object as the global.
+    // ES-module bundlers use coinpurse.mjs instead, which wraps this file rather than copying it.
+    if (typeof module === 'object' && module && module.exports) {
+        module.exports = CoinPurse;
+    }
 })();

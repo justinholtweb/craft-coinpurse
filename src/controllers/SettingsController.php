@@ -95,7 +95,7 @@ class SettingsController extends Controller
         return [
             'enableApplePay', 'enableGooglePay', 'enableLink', 'enablePaypal', 'enableAmazonPay',
             'enableKlarna', 'requireEmail', 'requirePhone', 'requireName', 'stripeAutoWallets',
-            'loggingEnabled', 'logPayloads', 'registerWebPaymentsAlias',
+            'loggingEnabled', 'logPayloads', 'registerWebPaymentsAlias', 'injectRuntime',
         ];
     }
 

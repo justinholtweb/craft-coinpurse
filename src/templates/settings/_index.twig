@@ -206,6 +206,14 @@
                 size: 5,
                 disabled: readOnly,
             }) }}
+
+            {{ forms.lightswitchField({
+                label: 'Inject the button script'|t('coinpurse'),
+                instructions: 'Adds Coin Purse’s own script and stylesheet to any page with a button. Turn this off to bundle `coinpurse.js` and `coinpurse.css` with your own JavaScript instead: each button then carries its configuration in a `data-coinpurse-config` attribute, and your code calls `CoinPurse.start()`. Stripe.js and Google Pay’s script load from their own servers either way.'|t('coinpurse'),
+                name: 'settings[injectRuntime]',
+                on: settings.injectRuntime,
+                disabled: readOnly,
+            }) }}
         </div>
 
         <h2>{{ 'Apple Pay (direct driver only)'|t('coinpurse') }}</h2>

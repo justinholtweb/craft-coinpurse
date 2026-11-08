@@ -30,38 +30,88 @@ class Buttons extends Component
      * Returns an empty string — not an error, not a placeholder — when the plugin cannot serve
      * one. A button that cannot work must not occupy space on a product page, and the merchant
      * finds out why on the diagnostics screen rather than in a customer's browser.
+     *
+     * With “Inject the button script” on, the runtime is registered as an asset bundle and the
+     * button is mounted by an inline `CoinPurse.mount(…)`. With it off, nothing is registered: the
+     * button's markup carries the same configuration in `data-coinpurse-config`, and a runtime the
+     * site bundled itself mounts it from `CoinPurse.start()`. Both are built by `config()`.
      */
     public function render(array $config = []): Markup
     {
-        $view = Craft::$app->getView();
+        try {
+            $buttonConfig = $this->config($config);
 
-        if (!Plugin::getInstance()->isReady()) {
+            if ($buttonConfig === null) {
+                return new Markup('', Craft::$app->charset);
+            }
+
+            $view = Craft::$app->getView();
+            $id = $buttonConfig['id'];
+
+            $attributes = [
+                'id' => $id,
+                'class' => 'coinpurse-button',
+                'data' => ['coinpurse' => true],
+                'style' => ['min-height' => $buttonConfig['style']['height'] . 'px'],
+            ];
+
+            if (!Plugin::getInstance()->getSettings()->injectRuntime) {
+                $attributes['data-coinpurse-config'] = Json::encode($this->attributeConfig($buttonConfig));
+
+                return new Markup(Html::tag('div', '', $attributes), Craft::$app->charset);
+            }
+
+            $view->registerAssetBundle(ExpressAsset::class);
+
+            $view->registerJs(
+                'window.CoinPurse && window.CoinPurse.mount(' . Json::encode($buttonConfig) . ');',
+                View::POS_END
+            );
+
+            return new Markup(Html::tag('div', '', $attributes), Craft::$app->charset);
+        } catch (\Throwable $e) {
+            Craft::error('Coin Purse could not render a button: ' . $e->getMessage(), 'coinpurse');
+
             return new Markup('', Craft::$app->charset);
+        }
+    }
+
+    /**
+     * The browser-side configuration of one button, or null when no button can be served.
+     *
+     * The one place it is built: the injected `CoinPurse.mount(…)` call encodes it as it is, and
+     * the `data-coinpurse-config` attribute a bundled runtime reads is `attributeConfig()` of it.
+     *
+     * Nothing in it is visitor-specific. The payload is signed over the items (or just "the
+     * cart", which is resolved from the session when the sheet opens), site, gateway and an expiry;
+     * amounts, the gateway's publishable key and the CSRF token are all fetched by the browser at
+     * `express/start` and `users/session-info`, never written into the page.
+     */
+    public function config(array $config = []): ?array
+    {
+        if (!Plugin::getInstance()->isReady()) {
+            return null;
         }
 
         $driver = Plugin::getInstance()->getDrivers()->resolve();
         $gateway = Plugin::getInstance()->getDrivers()->getGateway();
 
         if (!$driver || !$gateway) {
-            return new Markup('', Craft::$app->charset);
+            return null;
         }
 
         $options = $this->normalise($config);
 
         if ($options->mode === ButtonOptions::MODE_ITEMS && !$options->items) {
-            return new Markup('', Craft::$app->charset);
+            return null;
         }
-
-        $id = 'coinpurse-' . StringHelper::randomString(10);
-
-        $payload = $options->signablePayload();
 
         $settings = Plugin::getInstance()->getSettings();
 
-        $buttonConfig = [
-            'id' => $id,
+        return [
+            'id' => 'coinpurse-' . StringHelper::randomString(10),
             'driver' => $driver::handle(),
-            'payload' => Signature::sign($payload),
+            'payload' => Signature::sign($options->signablePayload()),
             'endpoints' => $this->endpoints(),
             'style' => [
                 'type' => $config['style']['type'] ?? $settings->buttonType,
@@ -77,22 +127,29 @@ class Buttons extends Component
             'requestDetails' => $options->normalisedDetails(),
             'variable' => $config['js'] ?? null,
         ];
+    }
 
-        $view->registerAssetBundle(ExpressAsset::class);
+    /**
+     * What goes into `data-coinpurse-config`: the injected configuration, minus code.
+     *
+     * An attribute is data. Sanitisers that let user content through commonly allow `data-*`, so
+     * a runtime that executed JavaScript found in one would turn any such page into a script
+     * gadget. `onComplete.js` is therefore never written into the attribute — a bundling site
+     * passes a function to `CoinPurse.start({ onComplete })` or listens for `coinpurse:complete` —
+     * and the runtime refuses it there anyway, and treats `variable` as a name, not a statement.
+     */
+    public function attributeConfig(array $buttonConfig): array
+    {
+        if (!empty($buttonConfig['onComplete']['js'])) {
+            Craft::warning(
+                'Coin Purse ignored onComplete.js on a button rendered for a bundled runtime. Pass a function to CoinPurse.start({ onComplete }) or listen for the coinpurse:complete event instead.',
+                'coinpurse'
+            );
+        }
 
-        $html = Html::tag('div', '', [
-            'id' => $id,
-            'class' => 'coinpurse-button',
-            'data' => ['coinpurse' => true],
-            'style' => ['min-height' => $buttonConfig['style']['height'] . 'px'],
-        ]);
+        unset($buttonConfig['onComplete']['js']);
 
-        $view->registerJs(
-            'window.CoinPurse && window.CoinPurse.mount(' . Json::encode($buttonConfig) . ');',
-            View::POS_END
-        );
-
-        return new Markup($html, Craft::$app->charset);
+        return $buttonConfig;
     }
 
     /**

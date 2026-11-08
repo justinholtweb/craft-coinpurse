@@ -92,7 +92,7 @@ This needs more setup:
 | `requestShipping` | bool\|string | `false`, `true`, `'shipping'`, `'delivery'` or `'pickup'`. Changes the sheet's wording, and whether an address is collected at all. |
 | `requestDetails` | array | Any of `name`, `email`, `phone`. Email is always collected — Commerce cannot complete an order without one. |
 | `onComplete.redirect` | string | Where to send the customer afterwards. `{number}` is replaced with the order number. |
-| `onComplete.js` | string | JavaScript to run afterwards. `cwp.number` and `cwp.email` are in scope. |
+| `onComplete.js` | string | JavaScript to run afterwards. `cwp.number` and `cwp.email` are in scope. Injected script only — a [bundled script](https://justinholt.com/plugins/craft-coinpurse/docs/usage#bundling-the-button-script-yourself) takes a function instead. |
 | `js` | string | A variable to assign the button to, e.g. `'window.payButton'`. |
 | `style` | hash | `{ type, theme, height }`. Overrides the defaults from the settings. |
 
@@ -144,6 +144,12 @@ window.CoinPurse.lastOrder;   // { number, email } after a completed purchase
 Item lists are **not** mutable from JavaScript, unlike in Web Payments. They are signed by the
 server, which is the point — see below. Render a new button, or use `cart` mode and change the
 cart.
+
+Bundling your own JavaScript? Turn off **Inject the button script**, import `coinpurse.mjs` (or
+`coinpurse.js`) and include `coinpurse.css` in your bundle, and call `CoinPurse.start()` — each
+button carries its own configuration in a `data-coinpurse-config` attribute. Stripe.js and Google
+Pay's script still load from their own servers. See
+[the usage docs](https://justinholt.com/plugins/craft-coinpurse/docs/usage#bundling-the-button-script-yourself).
 
 ## How it protects the store
 

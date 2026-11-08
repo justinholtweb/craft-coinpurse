@@ -208,4 +208,9 @@ return [
     'Too many attempts. Wait a minute and try again.' => 'Too many attempts. Wait a minute and try again.',
     'Something went wrong. Nothing has been charged — please try again.' => 'Something went wrong. Nothing has been charged — please try again.',
     'Only admins can change these settings, because they live in project config and some of them are served publicly.' => 'Only admins can change these settings, because they live in project config and some of them are served publicly.',
+    'Inject the button script' => 'Inject the button script',
+    'Adds Coin Purse’s own script and stylesheet to any page with a button. Turn this off to bundle `coinpurse.js` and `coinpurse.css` with your own JavaScript instead: each button then carries its configuration in a `data-coinpurse-config` attribute, and your code calls `CoinPurse.start()`. Stripe.js and Google Pay’s script load from their own servers either way.' => 'Adds Coin Purse’s own script and stylesheet to any page with a button. Turn this off to bundle `coinpurse.js` and `coinpurse.css` with your own JavaScript instead: each button then carries its configuration in a `data-coinpurse-config` attribute, and your code calls `CoinPurse.start()`. Stripe.js and Google Pay’s script load from their own servers either way.',
+    'Button script' => 'Button script',
+    'Not injected. Buttons carry their configuration in a `data-coinpurse-config` attribute for your own JavaScript.' => 'Not injected. Buttons carry their configuration in a `data-coinpurse-config` attribute for your own JavaScript.',
+    'If no button appears, check that your bundle imports coinpurse.js (or coinpurse.mjs) and coinpurse.css, and calls CoinPurse.start() — or turn “Inject the button script” back on.' => 'If no button appears, check that your bundle imports coinpurse.js (or coinpurse.mjs) and coinpurse.css, and calls CoinPurse.start() — or turn “Inject the button script” back on.',
 ];

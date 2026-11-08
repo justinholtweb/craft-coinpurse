@@ -24,7 +24,7 @@ summary: The Twig tag and its options, buy-now versus cart buttons, the JavaScri
 | `requestShipping` | bool or string | `false`, `true`, `'shipping'`, `'delivery'` or `'pickup'`. Changes the sheet's wording, and whether an address is collected at all. |
 | `requestDetails` | array | Any of `name`, `email`, `phone`. Email is always collected. |
 | `onComplete.redirect` | string | Where to send the customer afterwards. `{number}` becomes the order number. |
-| `onComplete.js` | string | JavaScript to run afterwards. `cwp.number` and `cwp.email` are in scope. |
+| `onComplete.js` | string | JavaScript to run afterwards. `cwp.number` and `cwp.email` are in scope. Injected script only — a [bundled script](#bundling-the-button-script-yourself) takes a function instead. |
 | `js` | string | A variable to assign the button to, e.g. `'window.payButton'`. |
 | `style` | hash | `{ type, theme, height }`, overriding the defaults from the settings. |
 
@@ -125,6 +125,71 @@ window.CoinPurse.lastOrder;   // { number, email } after a completed purchase
 
 Item lists cannot be changed from JavaScript. They are signed by the server, which is the point.
 Render a new button, or use `cart` mode and change the cart.
+
+Every completed purchase also fires a `coinpurse:complete` event on the button element. It bubbles,
+and `event.detail.order` is `{ number, email }`.
+
+## Bundling the button script yourself
+
+If all of your JavaScript ships from a CDN or a bundle, take Coin Purse's script with it instead of
+letting Craft publish and inject it.
+
+1. Turn off **Inject the button script** (`injectRuntime`). Coin Purse then adds nothing to the
+   page — no `<script>`, no stylesheet, no inline call. `craft.coinpurse.button()` still renders
+   the button's `<div>`, now carrying its configuration in a `data-coinpurse-config` attribute.
+2. Copy `coinpurse.js`, `coinpurse.mjs` and `coinpurse.css` from
+   `vendor/justinholtweb/craft-coinpurse/src/web/assets/express/dist/` into your source, with the
+   two scripts side by side. Include `coinpurse.css` in your stylesheet — the Apple Pay button on
+   the direct driver needs it.
+3. Start it:
+
+   ```js
+   import CoinPurse from './vendor/coinpurse.mjs';    // ES-module bundlers (Vite, Rollup, esbuild, webpack)
+   // const CoinPurse = require('./vendor/coinpurse.js');   // CommonJS bundlers
+   // or a plain <script src="…/coinpurse.js">, then window.CoinPurse
+
+   CoinPurse.start();
+   ```
+
+`CoinPurse.start()` mounts every button on the page from its own attribute, so a page with a
+product button and a mini-cart button needs nothing more. It is safe to call before the markup is
+parsed — it waits for the document — and again after you insert more buttons (a mini-cart loaded
+over Ajax); a button that is already mounted is left alone. A button whose attribute is unreadable,
+or which the server refuses (an expired page, say), is hidden rather than left as an empty box.
+
+Options passed to `start()` apply over every button's own configuration:
+
+```js
+CoinPurse.start({
+    onComplete: function (order, button) { analytics.track('purchase', order.number); },
+    style: { theme: 'light' },
+});
+```
+
+**An attribute is data, never code.** Pages that render user content often let `data-*`
+attributes through, so the bundled runtime will not run JavaScript it finds in one:
+
+- `onComplete.js` is not written into the attribute, and is ignored if present. Pass a function to
+  `start({ onComplete })` or listen for `coinpurse:complete` instead. `onComplete.redirect` still
+  works, as long as it is a relative or `http(s)` URL.
+- `js: 'window.payButton'` still hands you the button, but it is assigned as a name (`a.b.c`), not
+  run as a statement.
+
+Nothing in the attribute is visitor-specific: it holds the signed item list (or just "the cart",
+which is read from the customer's session when the sheet opens), the endpoints and the
+presentation. Amounts, the gateway's publishable key and the CSRF token are fetched when the
+button mounts, exactly as with the injected script, so a page with a button can be cached the same
+way it could before. The signed payload expires after the **Express session lifetime**, so a cached
+copy older than that shows no button until it is re-rendered — the same as the injected script.
+
+Stripe.js and Google Pay's `pay.js` are not part of the bundle and must not be: both load from
+their own servers, on demand, whichever way Coin Purse's script arrived.
+
+If a page ends up with both the injected and the bundled copy, the first one loaded wins and the
+second hands back the same instance, so each button is mounted once.
+
+**Re-copy the files when you update Coin Purse.** A bundled copy is yours; Composer will not touch
+it.
 
 ## Console commands
 

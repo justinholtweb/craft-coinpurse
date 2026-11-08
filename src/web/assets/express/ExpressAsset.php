@@ -15,6 +15,9 @@ use craft\web\AssetBundle;
  * it, and PCI SAQ-A depends on it), and Google's `pay.js` likewise; both are fetched on demand by
  * the driver that needs them, so a store on Stripe never loads Google's script and a store that
  * renders no button loads neither.
+ *
+ * Only registered while “Inject the button script” is on. Off, a site bundles `coinpurse.js` (or
+ * the `coinpurse.mjs` wrapper) and `coinpurse.css` itself, and this bundle is never published.
  */
 class ExpressAsset extends AssetBundle
 {

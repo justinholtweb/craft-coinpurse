@@ -46,6 +46,7 @@ class Diagnostics extends Component
 
         $checks[] = $this->shippingCheck();
         $checks[] = $this->domainAssociationCheck();
+        $checks[] = $this->runtimeCheck();
 
         return array_values(array_filter($checks));
     }
@@ -245,6 +246,25 @@ class Diagnostics extends Component
                 ? Craft::t('coinpurse', 'Served at /{path}', ['path' => ApplePay::DOMAIN_ASSOCIATION_PATH])
                 : Craft::t('coinpurse', 'No domain association file is configured.'),
             'fix' => $association ? '' : Craft::t('coinpurse', 'Download the file from your Apple developer account and paste its contents — or its path on disk — into Coin Purse’s settings.'),
+        ]);
+    }
+
+    /**
+     * Only shown when the script is not injected — the one configuration in which a perfectly
+     * healthy install still shows no button, because the site's own bundle has to start it.
+     */
+    private function runtimeCheck(): ?Check
+    {
+        if (Plugin::getInstance()->getSettings()->injectRuntime) {
+            return null;
+        }
+
+        return new Check([
+            'id' => 'runtime',
+            'label' => Craft::t('coinpurse', 'Button script'),
+            'status' => Check::PASS,
+            'detail' => Craft::t('coinpurse', 'Not injected. Buttons carry their configuration in a `data-coinpurse-config` attribute for your own JavaScript.'),
+            'fix' => Craft::t('coinpurse', 'If no button appears, check that your bundle imports coinpurse.js (or coinpurse.mjs) and coinpurse.css, and calls CoinPurse.start() — or turn “Inject the button script” back on.'),
         ]);
     }
 }

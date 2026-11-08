@@ -51,8 +51,9 @@ on here. Turn it on to let Stripe decide per browser.
 | Type | `buy` | `default`, `buy`, `donate`, `book`, `checkout`, `pay` |
 | Theme | `dark` | `dark`, `light`, `light-outline` |
 | Height | `48` | Pixels. Apple's guidelines allow 30 to 64. |
+| Inject the button script (`injectRuntime`) | On | Off, Coin Purse adds no script or stylesheet to the page and your own bundle runs the buttons. See [Bundling the button script yourself](usage#bundling-the-button-script-yourself). |
 
-Any of these can be overridden per button with the `style` option.
+Any of the first three can be overridden per button with the `style` option.
 
 ## Apple Pay (direct driver)
 

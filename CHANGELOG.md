@@ -1,5 +1,36 @@
 # Release Notes for Coin Purse
 
+## Unreleased
+
+### Added
+
+- The button script can be bundled with your own JavaScript instead of loaded from Craft's asset
+  URL. Turn off **Inject the button script** (`injectRuntime`) and Coin Purse writes nothing into
+  the page but the button itself, which carries its configuration in a `data-coinpurse-config`
+  attribute. Import `coinpurse.mjs` (ES modules) or `coinpurse.js` (CommonJS or a plain script),
+  include `coinpurse.css`, and call `CoinPurse.start()`. It mounts every button on the page, waits
+  for the document if it runs first, and can be called again for buttons added later. Stripe.js and
+  Google Pay's script still load from their own servers, on demand.
+- `CoinPurse.start({ onComplete: function (order, button) {} })`, and a `coinpurse:complete` event
+  on the button element, fired on every completed purchase whichever way the script was loaded.
+- A **Button script** line on the Diagnostics screen while the script is not injected.
+
+### Changed
+
+- Loading the script twice (injected and bundled) now leaves one instance, rather than the second
+  copy replacing the first and forgetting its buttons. A button is only ever mounted once.
+- A button the inline call reached before its markup existed is no longer registered as a dead
+  button; the mount waits for the document instead.
+- `craft.coinpurse.button()` returns an empty string, and logs the reason, if rendering throws,
+  rather than taking the page down.
+
+### Security
+
+- A button configuration read from an attribute is treated as data. `onComplete.js` is never
+  written into `data-coinpurse-config` and is ignored if found there, `js` is assigned as a
+  variable name rather than evaluated, and an `onComplete.redirect` that is not a relative or
+  http(s) URL is not followed. The injected script tag behaves exactly as before.
+
 ## 5.1.0 - 2026-10-10
 ### Added
 

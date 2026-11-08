@@ -80,6 +80,7 @@ $createdOrders = [];
 $createdGatewayId = null;
 $createdStripeGatewayId = null;
 $fixtureTemplate = null;
+$bundledTemplates = [];
 $originalSettings = $plugin->getSettings()->toArray();
 
 // `craft-penny` (a sibling plugin in this shared harness) registers an
@@ -1605,6 +1606,134 @@ TWIG);
 
         return in_array($response->getStatusCode(), [400, 405], true) ?: 'got ' . $response->getStatusCode();
     });
+
+    // -----------------------------------------------------------------
+    section('Bundled runtime (injectRuntime off)');
+
+    /**
+     * Render a given button tag in a page of its own and return the decoded data-coinpurse-config.
+     *
+     * A new template file each time, not a rewrite of one: Twig decides a compiled template is
+     * fresh by comparing mtimes to the second, so a file rewritten within the same second as its
+     * last render is served from the old compiled copy.
+     */
+    $renderBundled = function(string $tag) use ($client, &$bundledTemplates): array {
+        $name = 'coinpurse-fixture-bundled-' . count($bundledTemplates);
+        $file = Craft::$app->getPath()->getSiteTemplatesPath() . "/$name.twig";
+        $bundledTemplates[] = $file;
+
+        file_put_contents($file, "<!DOCTYPE html>\n<html lang=\"en\"><head><title>Coin Purse fixture</title></head><body>\n$tag\n</body></html>");
+
+        $body = (string)$client->get($name)->getBody();
+        $config = null;
+
+        if (preg_match('/data-coinpurse-config="([^"]*)"/', $body, $m)) {
+            $config = json_decode(html_entity_decode($m[1], ENT_QUOTES | ENT_HTML5), true);
+        }
+
+        return [$body, $config];
+    };
+
+    $bundledTag = '{{ craft.coinpurse.button({ items: [{ id: ' . $variantA->id . ', qty: 1 }], requestShipping: \'shipping\', onComplete: { redirect: \'/thanks?number={number}\', js: \'alert(cwp.number)\' }, js: \'window.payButton\' }) }}';
+
+    check('with the script not injected, the page carries the button and nothing else of Coin Purse’s', function() use ($originalSettings, $gateway, $renderBundled, $bundledTag) {
+        applySettings(array_merge($originalSettings, [
+            'gatewayId' => $gateway->id, 'driver' => 'raw', 'enableApplePay' => true, 'enableGooglePay' => true,
+            'injectRuntime' => false,
+        ]));
+
+        [$body, $config] = $renderBundled($bundledTag);
+
+        return is_array($config)
+            && str_contains($body, 'class="coinpurse-button"')
+            && !str_contains($body, 'coinpurse.js')
+            && !str_contains($body, 'coinpurse.css')
+            && !str_contains($body, 'CoinPurse.mount(')
+            ?: 'markup was ' . substr($body, 0, 600);
+    });
+
+    check('the attribute is the injected config, from the same method, minus onComplete.js', function() use ($plugin, $renderBundled, $bundledTag, $variantA) {
+        [, $config] = $renderBundled($bundledTag);
+
+        $injected = $plugin->getButtons()->config([
+            'items' => [['id' => $variantA->id, 'qty' => 1]],
+            'requestShipping' => 'shipping',
+            'onComplete' => ['redirect' => '/thanks?number={number}', 'js' => 'alert(cwp.number)'],
+            'js' => 'window.payButton',
+        ]);
+        $expected = $plugin->getButtons()->attributeConfig($injected);
+
+        // `id` is random per render and `payload` carries an expiry, so those two are compared by
+        // shape, and the endpoints by path: this console run's base URL is not the web request's.
+        // Everything else must be identical.
+        $payload = Signature::verify((string)($config['payload'] ?? ''));
+        $paths = static fn(array $urls) => array_map(static fn($u) => parse_url($u, PHP_URL_PATH) . '?' . parse_url($u, PHP_URL_QUERY), $urls);
+        $config['endpoints'] = $paths($config['endpoints'] ?? []);
+        $expected['endpoints'] = $paths($expected['endpoints']);
+        unset($config['id'], $config['payload'], $expected['id'], $expected['payload']);
+
+        return $config === $expected
+            && !array_key_exists('js', $config['onComplete'])
+            && $injected['onComplete']['js'] === 'alert(cwp.number)'
+            && $config['variable'] === 'window.payButton'
+            && $payload !== null && $payload['items'][0]['id'] === $variantA->id
+            ?: 'attribute ' . json_encode($config) . "\nexpected " . json_encode($expected);
+    });
+
+    check('the button config carries nothing visitor-specific', function() use ($plugin, $variantA) {
+        // A page with a button can be full-page cached. The CSRF token comes from
+        // users/session-info and amounts, publishable keys and the cart from express/start, so the
+        // config must be exactly this list — a new key here is a new thing baked into every cached
+        // copy of the page.
+        $keys = array_keys($plugin->getButtons()->config(['cart' => true]) ?? []);
+        $expected = ['id', 'driver', 'payload', 'endpoints', 'style', 'onComplete', 'requestShipping', 'shippingType', 'requestDetails', 'variable'];
+
+        $cart = Signature::verify($plugin->getButtons()->config(['cart' => true])['payload']);
+
+        return $keys === $expected && array_keys($cart) === ['mode', 'items', 'requestShipping', 'requestDetails', 'siteId', 'gatewayId', 'expires'] && $cart['items'] === []
+            ?: json_encode(['keys' => $keys, 'cartPayload' => $cart]);
+    });
+
+    check('with the script not injected, a button that cannot be served still renders nothing', function() use ($renderBundled) {
+        [$body, $config] = $renderBundled('[{{ craft.coinpurse.button({ items: [] }) }}]');
+
+        return $config === null && str_contains($body, '[]') && !str_contains($body, 'coinpurse-button') ?: substr($body, 0, 3000);
+    });
+
+    check('the runtime ships an ES-module wrapper beside it, not a second copy', function() {
+        $mjs = file_get_contents(dirname(__DIR__, 2) . '/src/web/assets/express/dist/coinpurse.mjs');
+
+        return $mjs !== false
+            && str_contains($mjs, "import './coinpurse.js';")
+            && str_contains($mjs, 'export default window.CoinPurse;')
+            && !str_contains($mjs, 'function')
+            ?: 'coinpurse.mjs is missing or no longer just wraps coinpurse.js';
+    });
+
+    check('diagnostics mention the bundled script only while it is not injected', function() use ($plugin) {
+        $off = array_filter($plugin->getDiagnostics()->run(), static fn($c) => $c->id === 'runtime');
+
+        $plugin->getSettings()->injectRuntime = true;
+        $on = array_filter($plugin->getDiagnostics()->run(), static fn($c) => $c->id === 'runtime');
+
+        return count($off) === 1 && !reset($off)->isFail() && str_contains(reset($off)->fix, 'CoinPurse.start()') && $on === []
+            ?: 'off=' . count($off) . ' on=' . count($on);
+    });
+
+    check('turning injection back on restores the injected markup exactly', function() use ($originalSettings, $gateway, $renderBundled, $bundledTag) {
+        applySettings(array_merge($originalSettings, [
+            'gatewayId' => $gateway->id, 'driver' => 'raw', 'enableApplePay' => true, 'enableGooglePay' => true,
+            'injectRuntime' => true,
+        ]));
+
+        [$body, $config] = $renderBundled($bundledTag);
+
+        return $config === null
+            && str_contains($body, 'coinpurse.js')
+            && str_contains($body, 'CoinPurse.mount(')
+            && str_contains($body, 'alert(cwp.number)')
+            ?: 'config=' . json_encode($config) . ' js=' . (int)str_contains($body, 'coinpurse.js') . ' mount=' . (int)str_contains($body, 'CoinPurse.mount(') . ' button=' . (int)str_contains($body, 'coinpurse-button');
+    });
 } finally {
     // -----------------------------------------------------------------
     section('Cleanup');
@@ -1613,6 +1742,12 @@ TWIG);
 
     if ($fixtureTemplate && is_file($fixtureTemplate)) {
         @unlink($fixtureTemplate);
+    }
+
+    foreach ($bundledTemplates as $bundledTemplate) {
+        if (is_file($bundledTemplate)) {
+            @unlink($bundledTemplate);
+        }
     }
 
     try {

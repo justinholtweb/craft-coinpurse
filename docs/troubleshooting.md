@@ -23,6 +23,9 @@ likelihood:
   that `/.well-known/apple-developer-merchantid-domain-association` returns the file.
 - **The template has no `<html>` or `<body>`.** Craft injects the button's script into them. The
   markup renders and the script that makes it work does not.
+- **“Inject the button script” is off and your bundle does not start Coin Purse.** Check that it
+  imports `coinpurse.js` or `coinpurse.mjs` and calls `CoinPurse.start()`, and that the button's
+  `<div>` has a `data-coinpurse-config` attribute.
 - **Nothing purchasable.** The tag returns an empty string for a disabled or unavailable variant,
   or an empty cart.
 

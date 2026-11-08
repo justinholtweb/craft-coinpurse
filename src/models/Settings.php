@@ -80,6 +80,14 @@ class Settings extends Model
     /** @var int Button height in pixels. Apple's guidelines put the floor at 30 and the ceiling at 64. */
     public int $buttonHeight = 48;
 
+    /**
+     * @var bool Add `coinpurse.js` and `coinpurse.css` to the page, with an inline call that mounts
+     *           each button. Off, Coin Purse writes nothing but the button's own markup — carrying
+     *           a `data-coinpurse-config` attribute — and the site's own bundle imports the script
+     *           and calls `CoinPurse.start()`.
+     */
+    public bool $injectRuntime = true;
+
     // ---------------------------------------------------------------- Stripe
 
     /**
